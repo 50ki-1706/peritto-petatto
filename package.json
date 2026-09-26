@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter app dev",
-    "build": "pnpm --filter app build",
-    "typecheck": "pnpm --filter app exec tsc --noEmit"
+    "dev": "vp -C apps/app dev",
+    "build": "vp -C apps/app build",
+    "preview": "vp run --filter app preview",
+    "typecheck": "vp run -r typecheck",
+    "check": "vp check"
   },
   "license": "ISC",
   "devEngines": {
@@ -18,6 +20,7 @@
   },
   "packageManager": "pnpm@12.6.0",
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.5"
+    "@tauri-apps/cli": "^2.11.5",
+    "vite-plus": "catalog:"
   }
 }

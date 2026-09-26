@@ -2,6 +2,11 @@ packages:
   - apps/*
   - packages/*
 
+# Single source of truth for the Vite+ CLI version (RC software: pinned exactly,
+# upgrades are deliberate). Root and packages reference this via `catalog:`.
+catalog:
+  vite-plus: 1.0.0-rc.1
+
 # Vite+ toolchain alignment (see vite-plus docs): plugins/deps import `vite`
 # directly, so alias it to the core Vite+ bundles and pin the bundled Vitest.
 overrides:

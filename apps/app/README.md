@@ -14,33 +14,60 @@ The server renders the HTML shell (including the client `<Script>`); React is mo
 
 ## Commands
 
-Run from the repo root (pnpm workspace):
+Bootstrap once with `pnpm install` (pnpm remains the workspace package manager).
+Everything else runs through Vite+ (`vp`). Without the global CLI
+(`curl -fsSL https://vite.plus | bash`) prefix commands with `pnpm exec`, for
+example `pnpm exec vp check`.
+
+Run from the repo root:
 
 ```txt
-pnpm install     # install all workspace dependencies
-pnpm dev         # Vite+ dev server (vp dev) on http://localhost:5173
-pnpm build       # Vite+ production build (vp build): dist/client (+ generated index.html for Tauri) and dist/api
-pnpm typecheck   # tsc --noEmit for this package
+vp install                    # install all workspace dependencies
+vp -C apps/app dev            # Vite+ dev server on http://localhost:5173
+vp -C apps/app build          # production build: dist/client (+ generated index.html for Tauri) and dist/api
+vp run --filter app preview   # build, then serve the production output
+vp run -r typecheck           # tsc --noEmit in every package
+vp check                      # format + lint + type-check the workspace
 ```
 
 Or from this directory:
 
 ```txt
-pnpm dev
-pnpm build
-pnpm preview     # build + preview the production output
-pnpm deploy      # build + wrangler deploy
-pnpm cf-typegen  # generate CloudflareBindings types from wrangler.jsonc
+vp dev            # app dev server (built-in command)
+vp run dev        # same, through the package script
+vp build          # app production build (built-in command)
+vp run build      # same, through the package script
+vp preview        # serve the existing production build (does not rebuild)
+vp run preview    # build first, then serve (`vp run build && vp preview`)
+vp run deploy     # build + wrangler deploy
+vp run cf-typegen # generate CloudflareBindings types from wrangler.jsonc
+vp run typecheck  # tsc --noEmit for this package
+```
+
+`vp preview` is the built-in preview command and only serves an existing build;
+the `preview` script (`vp run preview`) rebuilds first and then calls it. The
+same split applies to the root script `vp run --filter app preview`.
+
+Database tasks live in [`packages/db`](../../packages/db):
+
+```txt
+vp run --filter db db:generate        # drizzle-kit generate
+vp run --filter db db:export          # drizzle-kit export > schema.sql
+vp run --filter db db:migrate:local   # wrangler d1 migrations apply (--local)
+vp run --filter db db:migrate:remote  # wrangler d1 migrations apply (--remote)
 ```
 
 Tauri:
 
 ```txt
-pnpm tauri dev
-pnpm tauri build
+vp run tauri dev                  # from apps/app
+vp run tauri build                # from apps/app
+vp run --filter app tauri dev     # from the repo root
+vp run --filter app tauri build   # from the repo root
 ```
 
-`src-tauri/tauri.conf.json` starts the Vite server with `vp dev` (`beforeDevCommand`, cwd `..`) and builds with `vp build` (`beforeBuildCommand`).
+`src-tauri/tauri.conf.json` starts the Vite server with `vp dev`
+(`beforeDevCommand`, cwd `..`) and builds with `vp build` (`beforeBuildCommand`).
 
 ## Database
 
