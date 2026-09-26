@@ -1,0 +1,23 @@
+{
+  "name": "peritto-petatto",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter app dev",
+    "build": "pnpm --filter app build",
+    "typecheck": "pnpm --filter app exec tsc --noEmit"
+  },
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.6.0",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.6.0",
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.5"
+  }
+}
