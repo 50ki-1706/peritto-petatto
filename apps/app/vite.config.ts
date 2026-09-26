@@ -39,9 +39,9 @@ function tauriIndexHtml(): Plugin {
     <script type="module" src="/${entry.fileName}"></script>
   </body>
 </html>
-`
+`,
       })
-    }
+    },
   }
 }
 
@@ -50,17 +50,17 @@ export default defineConfig({
     cloudflare(),
     ssrPlugin({
       hotReload: {
-        ignore: ['./src/client/**/*']
-      }
+        ignore: ['./src/client/**/*'],
+      },
     }),
     react({
       include: [/\/src\/client\//],
-      jsxImportSource: 'react'
+      jsxImportSource: 'react',
     }),
-    tauriIndexHtml()
+    tauriIndexHtml(),
   ],
   server: {
     port: 5173,
-    strictPort: true
-  }
+    strictPort: true,
+  },
 })

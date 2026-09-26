@@ -13,6 +13,8 @@ const ignorePatterns = [
   '.agents/skills/**',
   '.claude/skills/**',
   'packages/db/migrations/**',
+  // OpenCode harness config, managed by the editor.
+  'opencode.json',
   // Tauri shell: Rust sources and the checked-in tauri.conf.json are not
   // managed by the JS toolchain.
   'apps/app/src-tauri/**',
