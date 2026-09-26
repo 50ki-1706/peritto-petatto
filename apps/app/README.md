@@ -57,6 +57,11 @@ vp run --filter db db:migrate:local   # wrangler d1 migrations apply (--local)
 vp run --filter db db:migrate:remote  # wrangler d1 migrations apply (--remote)
 ```
 
+`db:export` overwrites `packages/db/schema.sql`: the shell redirect
+(`> schema.sql`) truncates the file before `drizzle-kit` runs, and the currently
+committed `schema.sql` is a hand-written placeholder note, so running the task
+clobbers that note. TODO: generate `schema.sql` deliberately or gitignore it.
+
 Tauri:
 
 ```txt
