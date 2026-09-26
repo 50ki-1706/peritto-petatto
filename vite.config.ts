@@ -13,8 +13,10 @@ const ignorePatterns = [
   '.agents/skills/**',
   '.claude/skills/**',
   'packages/db/migrations/**',
-  // OpenCode harness config, managed by the editor.
+  // OpenCode harness config, managed by the editor; `.opencode/` is
+  // machine-local agent config (see AGENTS.md).
   'opencode.json',
+  '.opencode/**',
   // Tauri shell: Rust sources and the checked-in tauri.conf.json are not
   // managed by the JS toolchain.
   'apps/app/src-tauri/**',
@@ -31,7 +33,9 @@ export default defineConfig({
     overrides: [
       {
         files: ['apps/app/**'],
-        plugins: ['react'],
+        // List `typescript` explicitly: an override's `plugins` controls the
+        // matched files' plugin set and must not rely on base-list merging.
+        plugins: ['typescript', 'react'],
         env: { browser: true },
       },
       {
