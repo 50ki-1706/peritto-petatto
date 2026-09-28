@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "db:export": "drizzle-kit export > schema.sql",
     "db:migrate:local": "wrangler d1 migrations apply peritto-petatto --local --config ../../apps/app/wrangler.jsonc",
     "db:migrate:remote": "wrangler d1 migrations apply peritto-petatto --remote --config ../../apps/app/wrangler.jsonc",
     "typecheck": "tsc --noEmit"

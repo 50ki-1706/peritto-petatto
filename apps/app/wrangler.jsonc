@@ -9,7 +9,6 @@
       "database_name": "peritto-petatto",
       "database_id": "c017888a-cc08-4a9b-8075-18c4bbb02374",
       "migrations_dir": "../../packages/db/migrations",
-      "remote": true,
     },
   ],
 }
