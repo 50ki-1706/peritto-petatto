@@ -1,4 +1,5 @@
 import { cloudflare } from '@cloudflare/vite-plugin'
+import stylex from '@stylexjs/unplugin'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 import ssrPlugin from 'vite-ssr-components/plugin'
@@ -53,8 +54,16 @@ export default defineConfig({
         ignore: ['./src/client/**/*'],
       },
     }),
+    stylex.vite({
+      useCSSLayers: true,
+      // Keep StyleX output in the client carrier (`client.css`, emitted as the
+      // `main-<hash>.css` entry asset), never the separate server `style.css`
+      // rollup-input entry asset: replacing that entry breaks vite:css-post's
+      // reference bookkeeping (cssEntriesMap) with a TypeError.
+      cssInjectionTarget: (fileName) => /(^|\/)main(-[\w-]{8,})?\.css$/i.test(fileName),
+    }),
     react({
-      include: [/\/src\/client\//],
+      include: [/\/src\/client\/.*\.[tj]sx?$/],
       jsxImportSource: 'react',
     }),
     tauriIndexHtml(),
