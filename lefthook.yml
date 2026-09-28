@@ -1,3 +1,7 @@
+pre-commit:
+  commands:
+    staged:
+      run: pnpm exec vp staged
 commit-msg:
   commands:
     commitlint:

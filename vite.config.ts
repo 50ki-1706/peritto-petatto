@@ -52,4 +52,7 @@ export default defineConfig({
     // Keep manifest key order stable; dependency ordering is reviewed by hand.
     sortPackageJson: false,
   },
+  staged: {
+    '*.{js,ts,tsx}': 'vp check --fix',
+  },
 })
