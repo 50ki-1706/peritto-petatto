@@ -9,25 +9,7 @@
       "cloudflare-observability": { "type": "remote", "url": "https://observability.mcp.cloudflare.com/mcp" }
     }
   },
-  "agents": {
-    "explore": {
-      "permissions": [
-        { "action": "cloudflare-docs_*", "resource": "*", "effect": "allow" },
-        { "action": "cloudflare_docs", "resource": "*", "effect": "allow" },
-        { "action": "cloudflare_search", "resource": "*", "effect": "allow" }
-      ]
-    },
-    "general": {
-      "permissions": [
-        { "action": "execute", "resource": "*", "effect": "allow" },
-        { "action": "cloudflare*", "resource": "*", "effect": "allow" },
-        { "action": "cloudflare_execute", "resource": "*", "effect": "ask" },
-        { "action": "cloudflare-bindings_*create", "resource": "*", "effect": "ask" },
-        { "action": "cloudflare-bindings_*delete", "resource": "*", "effect": "ask" },
-        { "action": "cloudflare-bindings_*update", "resource": "*", "effect": "ask" },
-        { "action": "cloudflare-bindings_*edit", "resource": "*", "effect": "ask" },
-        { "action": "cloudflare-bindings_d1_databases_query", "resource": "*", "effect": "ask" }
-      ]
-    }
-  }
+  "permissions": [
+    { "action": "cloudflare*", "resource": "*", "effect": "allow" }
+  ]
 }
