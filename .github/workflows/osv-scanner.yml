@@ -1,0 +1,39 @@
+# OSV-Scanner: scans dependencies (pnpm, Cargo, GitHub Actions) for known
+# vulnerabilities. node_modules is skipped implicitly: it is gitignored and
+# never present in a CI checkout.
+#
+# `upload-sarif: false` because GitHub Code Scanning is not enabled yet; flip
+# both to `true` once it is (see post-push steps in AGENTS.md).
+name: OSV-Scanner
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly baseline scan (Mondays 04:00 UTC).
+    - cron: '0 4 * * 1'
+
+jobs:
+  # PR scan: fails only on vulnerabilities introduced by the pull request.
+  scan-pr:
+    if: github.event_name == 'pull_request'
+    # Required by osv-scanner-reusable-pr.yml; see the reusable workflow docs.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.6.0
+    with:
+      upload-sarif: false
+
+  # Weekly full scan of the default branch (keeps a baseline).
+  scan-scheduled:
+    if: github.event_name == 'schedule'
+    # Required by osv-scanner-reusable.yml; see the reusable workflow docs.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.6.0
+    with:
+      upload-sarif: false

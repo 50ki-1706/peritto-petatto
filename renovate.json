@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "description": "Vite+ RC toolchain is pinned deliberately; upgrade only via `vp upgrade` (see AGENTS.md). Covers the vite-plus catalog entry, the `vite` alias to @voidzero-dev/vite-plus-core, and the pnpm-workspace overrides `vite`/`vitest`.",
+      "matchManagers": ["npm"],
+      "matchDepNames": ["vite-plus", "vite", "vitest", "/^@voidzero-dev\\//"],
+      "enabled": false
+    },
+    {
+      "description": "Renovate does not manage devEngines yet; keep packageManager in sync manually to avoid drift.",
+      "matchDepTypes": ["packageManager"],
+      "enabled": false
+    }
+  ]
+}
