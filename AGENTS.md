@@ -67,3 +67,17 @@ root, so wrangler commands go through a package directory
 - One-time setup: run `opencode mcp auth <server>` for the four OAuth servers.
 - Mutation-capable tools (`cloudflare_execute`, bindings create/delete/update/edit, D1 query) should be approval-gated (`ask`) via personal agent config (see `.opencode/agents/`, machine-local git-ignored).
 - Deploys run `vp run --filter app deploy`, which internally uses the wrangler CLI (see .agents/skills/wrangler); the MCP servers are for lookup, binding management, builds and observability.
+
+## Dependency updates
+
+Renovate (hosted GitHub App) manages the pnpm workspace (including `catalog:`),
+Cargo (requires the committed `apps/app/src-tauri/Cargo.lock`) and GitHub
+Actions. The Vite+ RC toolchain is intentionally frozen: `vite-plus`,
+`@voidzero-dev/*`, the `vite` alias and the `vitest` override upgrade only via
+`vp upgrade`; `packageManager` stays manual (Renovate does not manage
+`devEngines` yet).
+
+OSV-Scanner runs in CI on PRs and weekly with `upload-sarif: false` (flip to
+`true` once GitHub Code Scanning is available). Post-push: push the repo,
+install github.com/apps/renovate for it, enable Dependency graph + Dependabot
+alerts, then review the Renovate onboarding PR / Dependency Dashboard.
