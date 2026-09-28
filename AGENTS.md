@@ -65,5 +65,5 @@ root, so wrangler commands go through a package directory
 | cloudflare-observability | Querying worker logs and metrics                                                | OAuth         |
 
 - One-time setup: run `opencode mcp auth <server>` for the four OAuth servers.
-- For the `general` agent, mutation-capable tools (`cloudflare_execute`, bindings create/delete/update/edit, D1 query) require approval (`ask`); choose "Allow once" to approve each mutation individually.
+- Mutation-capable tools (`cloudflare_execute`, bindings create/delete/update/edit, D1 query) should be approval-gated (`ask`) via personal agent config (see `.opencode/agents/`, machine-local git-ignored).
 - Deploys run `vp run --filter app deploy`, which internally uses the wrangler CLI (see .agents/skills/wrangler); the MCP servers are for lookup, binding management, builds and observability.
