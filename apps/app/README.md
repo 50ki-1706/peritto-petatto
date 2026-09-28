@@ -52,15 +52,9 @@ Database tasks live in [`packages/db`](../../packages/db):
 
 ```txt
 vp run --filter db db:generate        # drizzle-kit generate
-vp run --filter db db:export          # drizzle-kit export > schema.sql
 vp run --filter db db:migrate:local   # wrangler d1 migrations apply (--local)
 vp run --filter db db:migrate:remote  # wrangler d1 migrations apply (--remote)
 ```
-
-`db:export` overwrites `packages/db/schema.sql`: the shell redirect
-(`> schema.sql`) truncates the file before `drizzle-kit` runs, and the currently
-committed `schema.sql` is a hand-written placeholder note, so running the task
-clobbers that note. TODO: generate `schema.sql` deliberately or gitignore it.
 
 Tauri:
 
@@ -77,3 +71,15 @@ vp run --filter app tauri build   # from the repo root
 ## Database
 
 D1 schema and migration scripts live in [`packages/db`](../../packages/db).
+
+Local development (`vp dev`) uses a local D1 database automatically; local state
+lives in `apps/app/.wrangler/state` (relative to the repo root). The local
+database is isolated local data, not a copy of production — delete that state
+directory to reset it.
+
+To change the schema, edit `packages/db/src/schema.ts`, then run
+`vp run --filter db db:generate` to create the migration in
+`packages/db/migrations/`, followed by `vp run --filter db db:migrate:local`.
+Before deploying, apply it to the shared remote database with
+`vp run --filter db db:migrate:remote`; this affects the production D1 database
+`peritto-petatto`.

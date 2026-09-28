@@ -54,6 +54,18 @@ root, so wrangler commands go through a package directory
 - `vp run -r typecheck` runs `tsc --noEmit` in every package that defines a
   `typecheck` script.
 
+## Database (D1)
+
+Schema lives in `packages/db/src/schema.ts`. Migrations are generated, never
+pushed (`drizzle-kit generate` only, no `drizzle-kit push`): edit the schema,
+run `vp run --filter db db:generate`, then `vp run --filter db db:migrate:local`.
+Before deploying, apply migrations to the shared remote database with
+`vp run --filter db db:migrate:remote` (affects production D1 `peritto-petatto`).
+
+Local development binds to the local D1 database (the D1 binding in
+`apps/app/wrangler.jsonc` has no `remote: true`); local state lives in
+`apps/app/.wrangler/state` and is isolated local data, not a copy of production.
+
 ## Cloudflare MCP servers
 
 | Server                   | Use for                                                                         | Auth          |
