@@ -1,13 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "api",
+  "account_id": "9135d42f432d487a4755560f331db1ae",
   "compatibility_date": "2025-08-03",
   "main": "./src/server/index.tsx",
   "d1_databases": [
     {
       "binding": "peritto_petatto",
       "database_name": "peritto-petatto",
-      "database_id": "c017888a-cc08-4a9b-8075-18c4bbb02374",
+      "database_id": "9a925e04-8b23-4012-bd99-c73190548545",
       "migrations_dir": "../../packages/db/migrations",
     },
   ],
