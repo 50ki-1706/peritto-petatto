@@ -8,7 +8,8 @@
     "build": "vp -C apps/app build",
     "preview": "vp run --filter app preview",
     "typecheck": "vp run -r typecheck",
-    "check": "vp check"
+    "check": "vp check",
+    "prepare": "lefthook install"
   },
   "license": "ISC",
   "devEngines": {
@@ -20,7 +21,10 @@
   },
   "packageManager": "pnpm@12.6.0",
   "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
     "@tauri-apps/cli": "^2.11.5",
+    "lefthook": "^2.1.14",
     "vite-plus": "catalog:"
   }
 }

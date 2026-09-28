@@ -16,6 +16,8 @@ overrides:
 # Build scripts explicitly allowed (pnpm 12 `allowBuilds`).
 allowBuilds:
   esbuild: true
+  # Hooks are installed by the root `prepare` script, not lefthook's postinstall.
+  lefthook: false
   workerd: true
 
 minimumReleaseAgeExclude:
