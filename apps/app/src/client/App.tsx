@@ -38,7 +38,6 @@ type Drag = {
 
 const NOTE_SIZE = 206
 const MOBILE_QUERY = '(max-width: 700px)'
-const STORAGE_KEY = 'peritto-petatto.notes.v1'
 const initialNotes: Note[] = [
   {
     id: 'welcome-1',
@@ -106,46 +105,8 @@ const initialNotes: Note[] = [
   },
 ]
 
-function isSavedNote(value: unknown): value is Note {
-  if (!value || typeof value !== 'object') return false
-  const note = value as Partial<Note>
-  return (
-    typeof note.id === 'string' &&
-    note.id.length > 0 &&
-    palette.some((color) => color.id === note.color) &&
-    typeof note.text === 'string' &&
-    Number.isFinite(note.x) &&
-    Number.isFinite(note.y) &&
-    Number.isFinite(note.angle) &&
-    (note.z === undefined || Number.isFinite(note.z)) &&
-    (note.mobileX === undefined || Number.isFinite(note.mobileX)) &&
-    (note.mobileY === undefined || Number.isFinite(note.mobileY)) &&
-    (note.mobilePlacement === undefined ||
-      (note.mobilePlacement !== null &&
-        Number.isFinite(note.mobilePlacement.x) &&
-        Number.isFinite(note.mobilePlacement.y)))
-  )
-}
-
-function loadNotes(): Note[] {
-  try {
-    const saved: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')
-    if (
-      Array.isArray(saved) &&
-      saved.every(isSavedNote) &&
-      new Set(saved.map((note) => note.id)).size === saved.length
-    ) {
-      return saved
-    }
-  } catch {
-    // A blocked storage area or invalid data must not prevent opening the board.
-  }
-  return initialNotes
-}
-
 export function App() {
-  const [notes, setNotes] = useState(loadNotes)
-  const [saveFailed, setSaveFailed] = useState(false)
+  const [notes, setNotes] = useState(initialNotes)
   const [preview, setPreview] = useState<Note | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [deleteSide, setDeleteSide] = useState<DeleteSide | null>(null)
@@ -159,18 +120,7 @@ export function App() {
   const drag = useRef<Drag | null>(null)
   const suppressClick = useRef(false)
   const sheetGesture = useRef<{ y: number; moved: boolean } | null>(null)
-  const topZ = useRef(notes.reduce((highest, note) => Math.max(highest, note.z ?? 0), notes.length))
-
-  useEffect(() => {
-    // Persist completed moves, never an intermediate position over a delete target.
-    if (drag.current) return
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(notes))
-      setSaveFailed(false)
-    } catch {
-      setSaveFailed(true)
-    }
-  }, [notes])
+  const topZ = useRef(initialNotes.length)
 
   useEffect(() => {
     if (focusId) editors.current.get(focusId)?.focus()
@@ -548,11 +498,6 @@ export function App() {
       <div role="status" {...stylex.props(styles.srOnly)}>
         {deleteSide ? '離すと付箋を削除します。戻すとキャンセルできます' : announcement}
       </div>
-      {saveFailed && (
-        <p role="alert" {...stylex.props(styles.saveWarning, styles.layer(topZ.current + 4))}>
-          付箋を保存できません。再読み込みする前に内容を控えてください。
-        </p>
-      )}
       {deleteSide && (
         <div
           aria-hidden="true"
