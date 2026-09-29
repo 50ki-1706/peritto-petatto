@@ -1,23 +1,358 @@
 /** @jsxImportSource react */
 import * as stylex from '@stylexjs/stylex'
-import { colors, typography } from './styles/tokens.stylex'
+import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react'
+import { styles, paperStyles } from './board.styles'
 
-const styles = stylex.create({
-  root: {
-    backgroundColor: colors.bg,
-    color: colors.fg,
-    minHeight: '100vh',
+const palette = [
+  { id: 'yellow', label: 'きいろ' },
+  { id: 'pink', label: 'ももいろ' },
+  { id: 'blue', label: 'みずいろ' },
+  { id: 'green', label: 'みどり' },
+  { id: 'purple', label: 'むらさき' },
+  { id: 'orange', label: 'だいだい' },
+] as const
+
+type Color = (typeof palette)[number]['id']
+type Note = {
+  id: string
+  color: Color
+  text: string
+  x: number
+  y: number
+  angle: number
+  z?: number
+}
+type Drag = {
+  mode: 'new' | 'move'
+  note: Note
+  startX: number
+  startY: number
+  moved: boolean
+  pointerId: number
+}
+
+const NOTE_SIZE = 206
+const initialNotes: Note[] = [
+  {
+    id: 'welcome-1',
+    color: 'yellow',
+    text: '企画書\nたたき台を\nつくる！',
+    x: 60,
+    y: 78,
+    angle: -4,
   },
-  heading: {
-    color: colors.accent,
-    fontFamily: typography.fontFamily,
+  { id: 'welcome-2', color: 'pink', text: '明日\n打ち合わせ\n10:00〜', x: 318, y: 65, angle: -5 },
+  { id: 'welcome-3', color: 'blue', text: 'デザイン\nチェック\n\n✓  ✓', x: 576, y: 76, angle: -3 },
+  {
+    id: 'welcome-4',
+    color: 'green',
+    text: '買い出し\n・たまねぎ\n・にんじん\n・牛乳\n・たまご',
+    x: 834,
+    y: 65,
+    angle: -4,
   },
-})
+  {
+    id: 'welcome-5',
+    color: 'purple',
+    text: 'やりたいこと\n\n・旅行の計画\n・ホテル予約\n・持ち物リスト',
+    x: 84,
+    y: 326,
+    angle: -5,
+  },
+  {
+    id: 'welcome-6',
+    color: 'orange',
+    text: '資料作成\n\n・スライド\n・データ整理',
+    x: 342,
+    y: 313,
+    angle: -4,
+  },
+  {
+    id: 'welcome-7',
+    color: 'yellow',
+    text: '週末の予定\n\n土曜  サッカー\n日曜  お買い物',
+    x: 600,
+    y: 327,
+    angle: -4,
+  },
+  {
+    id: 'welcome-8',
+    color: 'pink',
+    text: 'アイデア\n\n付箋アプリ\nいい感じに！',
+    x: 858,
+    y: 316,
+    angle: -5,
+  },
+]
 
 export function App() {
+  const [notes, setNotes] = useState(initialNotes)
+  const [preview, setPreview] = useState<Note | null>(null)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const boardRef = useRef<HTMLElement>(null)
+  const dockRef = useRef<HTMLElement>(null)
+  const editors = useRef(new Map<string, HTMLTextAreaElement>())
+  const drag = useRef<Drag | null>(null)
+  const suppressClick = useRef(false)
+  const topZ = useRef(initialNotes.length)
+
+  useEffect(() => {
+    if (focusId) editors.current.get(focusId)?.focus()
+  }, [focusId])
+
+  useEffect(() => {
+    const cancelOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') cancelDrag()
+    }
+    window.addEventListener('keydown', cancelOnEscape)
+    return () => window.removeEventListener('keydown', cancelOnEscape)
+  }, [])
+
+  function constrain(note: Note): Note {
+    const board = boardRef.current
+    if (!board) return note
+    return {
+      ...note,
+      x: Math.max(14, Math.min(board.clientWidth - NOTE_SIZE - 14, note.x)),
+      y: Math.max(14, Math.min(board.clientHeight - NOTE_SIZE - 14, note.y)),
+    }
+  }
+
+  function bringToFront(id: string) {
+    const z = ++topZ.current
+    // Keep DOM order stable so editing and pointer capture are preserved.
+    setNotes((current) => current.map((note) => (note.id === id ? { ...note, z } : note)))
+  }
+
+  function addNote(note: Note) {
+    const z = ++topZ.current
+    setNotes((current) => [...current, constrain({ ...note, z })])
+    setFocusId(note.id)
+  }
+
+  function newNote(color: Color, x: number, y: number): Note {
+    return { id: crypto.randomUUID(), color, text: '', x, y, angle: -3 }
+  }
+
+  function startNew(event: PointerEvent<HTMLButtonElement>, color: Color) {
+    if (event.button !== 0 || drag.current) return
+    const rect = boardRef.current!.getBoundingClientRect()
+    suppressClick.current = false
+    drag.current = {
+      mode: 'new',
+      note: newNote(
+        color,
+        event.clientX - rect.left - NOTE_SIZE / 2,
+        event.clientY - rect.top - 30,
+      ),
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+      pointerId: event.pointerId,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function startMove(event: PointerEvent<HTMLButtonElement>, note: Note) {
+    if (event.button !== 0 || drag.current) return
+    drag.current = {
+      mode: 'move',
+      note,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+      pointerId: event.pointerId,
+    }
+    bringToFront(note.id)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function move(event: PointerEvent<HTMLButtonElement>) {
+    const active = drag.current
+    if (!active || active.pointerId !== event.pointerId) return
+    const dx = event.clientX - active.startX
+    const dy = event.clientY - active.startY
+    if (!active.moved && Math.hypot(dx, dy) < 5) return
+    active.moved = true
+    const next = { ...active.note, x: active.note.x + dx, y: active.note.y + dy }
+    if (active.mode === 'new') {
+      setPreview(next)
+    } else {
+      setDraggingId(next.id)
+      setNotes((current) =>
+        current.map((note) =>
+          note.id === next.id ? constrain({ ...note, x: next.x, y: next.y }) : note,
+        ),
+      )
+    }
+  }
+
+  function finish(event: PointerEvent<HTMLButtonElement>) {
+    const active = drag.current
+    if (!active || active.pointerId !== event.pointerId) return
+    if (active.mode === 'new' && active.moved) {
+      suppressClick.current = true
+      const rect = boardRef.current!.getBoundingClientRect()
+      const dock = dockRef.current!.getBoundingClientRect()
+      const overDock =
+        event.clientX >= dock.left &&
+        event.clientX <= dock.right &&
+        event.clientY >= dock.top &&
+        event.clientY <= dock.bottom
+      if (
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom &&
+        !overDock
+      ) {
+        addNote({
+          ...active.note,
+          x: active.note.x + event.clientX - active.startX,
+          y: active.note.y + event.clientY - active.startY,
+        })
+      }
+    }
+    drag.current = null
+    setPreview(null)
+    setDraggingId(null)
+    event.currentTarget.releasePointerCapture(event.pointerId)
+  }
+
+  function cancelDrag() {
+    const active = drag.current
+    if (active?.mode === 'move') {
+      setNotes((current) =>
+        current.map((note) =>
+          note.id === active.note.id ? { ...note, x: active.note.x, y: active.note.y } : note,
+        ),
+      )
+    }
+    if (active?.mode === 'new') suppressClick.current = true
+    drag.current = null
+    setPreview(null)
+    setDraggingId(null)
+  }
+
+  function moveWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, note: Note) {
+    const step = event.shiftKey ? 30 : 10
+    const offsets: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    }
+    const offset = offsets[event.key]
+    if (!offset) return
+    event.preventDefault()
+    setNotes((current) =>
+      current.map((item) =>
+        item.id === note.id
+          ? constrain({ ...item, x: item.x + offset[0], y: item.y + offset[1] })
+          : item,
+      ),
+    )
+  }
+
   return (
-    <div {...stylex.props(styles.root)}>
-      <h1 {...stylex.props(styles.heading)}>petitto-petatto</h1>
-    </div>
+    <main ref={boardRef} {...stylex.props(styles.app, styles.board)} aria-label="付箋ボード">
+      {notes.map((note, index) => (
+        <article
+          key={note.id}
+          {...stylex.props(
+            styles.note,
+            paperStyles[note.color],
+            styles.position(note.x, note.y, note.angle, note.z ?? index + 1),
+            draggingId === note.id && styles.lifted,
+          )}
+        >
+          <button
+            type="button"
+            {...stylex.props(styles.handle)}
+            aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋を移動`}
+            title="ドラッグ、または矢印キーで移動"
+            onPointerDown={(event) => startMove(event, note)}
+            onPointerMove={move}
+            onPointerUp={finish}
+            onPointerCancel={cancelDrag}
+            onLostPointerCapture={cancelDrag}
+            onKeyDown={(event) => moveWithKeyboard(event, note)}
+          >
+            <span {...stylex.props(styles.grip)} aria-hidden="true" />
+          </button>
+          <textarea
+            ref={(element) => {
+              if (element) editors.current.set(note.id, element)
+              else editors.current.delete(note.id)
+            }}
+            {...stylex.props(styles.editor)}
+            aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋のテキスト`}
+            spellCheck={false}
+            value={note.text}
+            onFocus={() => bringToFront(note.id)}
+            onChange={(event) =>
+              setNotes((current) =>
+                current.map((item) =>
+                  item.id === note.id ? { ...item, text: event.target.value } : item,
+                ),
+              )
+            }
+          />
+          <span {...stylex.props(styles.fold)} aria-hidden="true" />
+        </article>
+      ))}
+
+      {preview && (
+        <div
+          aria-hidden="true"
+          {...stylex.props(
+            styles.note,
+            paperStyles[preview.color],
+            styles.position(preview.x, preview.y, -7, topZ.current + 2),
+            styles.lifted,
+            styles.preview,
+          )}
+        >
+          <span {...stylex.props(styles.fold)} />
+        </div>
+      )}
+
+      <footer ref={dockRef} {...stylex.props(styles.dock, styles.layer(topZ.current + 1))}>
+        <p {...stylex.props(styles.count)}>{notes.length} 枚の付箋</p>
+        <div {...stylex.props(styles.tray)} aria-label="付箋の色を選んで追加">
+          {palette.map((color) => (
+            <button
+              key={color.id}
+              type="button"
+              aria-label={`${color.label}の付箋を追加`}
+              {...stylex.props(styles.swatch, paperStyles[color.id])}
+              onPointerDown={(event) => startNew(event, color.id)}
+              onPointerMove={move}
+              onPointerUp={finish}
+              onPointerCancel={cancelDrag}
+              onLostPointerCapture={cancelDrag}
+              onClick={() => {
+                if (suppressClick.current) {
+                  suppressClick.current = false
+                  return
+                }
+                const offset = (notes.length % 5) * 24
+                addNote(
+                  newNote(
+                    color.id,
+                    (boardRef.current!.clientWidth - NOTE_SIZE) / 2 + offset,
+                    170 + offset,
+                  ),
+                )
+              }}
+            >
+              <span {...stylex.props(styles.swatchLine)} aria-hidden="true" />
+              <span {...stylex.props(styles.fold)} aria-hidden="true" />
+            </button>
+          ))}
+        </div>
+      </footer>
+    </main>
   )
 }
