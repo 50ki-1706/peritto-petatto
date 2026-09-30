@@ -41,6 +41,13 @@ export const styles = stylex.create({
     isolation: 'isolate',
     margin: 0,
     backgroundImage: 'radial-gradient(ellipse at 50% 35%, #fffdf780, transparent 75%)',
+    '@media (max-width: 700px)': {
+      height: 'auto',
+      minHeight: '100dvh',
+      padding: '18px 8px 164px',
+      overflowX: 'hidden',
+      overflowY: 'visible',
+    },
   },
   count: {
     margin: '0 0 12px',
@@ -48,6 +55,9 @@ export const styles = stylex.create({
     fontSize: 11,
     color: '#8a877b',
     letterSpacing: '0.04em',
+    '@media (max-width: 700px)': {
+      display: 'none',
+    },
   },
   layer: (zIndex: number) => ({ zIndex }),
   note: {
@@ -64,6 +74,29 @@ export const styles = stylex.create({
     transform: `rotate(${angle}deg)`,
     zIndex,
   }),
+  mobileNote: {
+    '@media (max-width: 700px)': {
+      position: 'relative',
+      left: 'auto',
+      top: 'auto',
+      width: 'min(88vw, 360px)',
+      height: 'min(88vw, 360px)',
+      margin: '0 auto 22px',
+    },
+  },
+  mobilePosition: (x: number, y: number, angle: number) => ({
+    '@media (max-width: 700px)': {
+      transform: `translate3d(${x}px, ${y}px, 0) rotate(${angle}deg)`,
+    },
+  }),
+  mobilePlaced: (x: number, y: number) => ({
+    '@media (max-width: 700px)': {
+      position: 'absolute',
+      left: x,
+      top: y,
+      margin: 0,
+    },
+  }),
   lifted: { boxShadow: '4px 20px 28px -10px #66532e50', cursor: 'grabbing' },
   handle: {
     display: 'flex',
@@ -79,6 +112,9 @@ export const styles = stylex.create({
     touchAction: 'none',
     outline: { default: 'none', ':focus-visible': '2px solid #676d54' },
     outlineOffset: 3,
+    '@media (max-width: 700px)': {
+      height: 44,
+    },
   },
   grip: {
     display: 'block',
@@ -107,6 +143,11 @@ export const styles = stylex.create({
     lineHeight: 1.65,
     letterSpacing: '0.025em',
     scrollbarWidth: 'thin',
+    '@media (max-width: 700px)': {
+      height: 'calc(100% - 44px)',
+      padding: '10px 25px 18px',
+      fontSize: 21,
+    },
   },
   fold: {
     position: 'absolute',
@@ -127,6 +168,24 @@ export const styles = stylex.create({
     left: '50%',
     transform: 'translateX(-50%)',
     width: 694,
+    '@media (max-width: 700px)': {
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      width: '100%',
+      paddingBottom: 'env(safe-area-inset-bottom)',
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      backgroundColor: '#f8f5eee8',
+      boxShadow: '0 -12px 34px -18px #55472f66, inset 0 1px 0 #ffffff',
+      backdropFilter: 'blur(16px)',
+      transform: 'none',
+    },
+  },
+  openDock: {
+    '@media (max-width: 700px)': {
+      boxShadow: '0 -18px 42px -18px #55472f78, inset 0 1px 0 #ffffff',
+    },
   },
   tray: {
     display: 'flex',
@@ -141,6 +200,34 @@ export const styles = stylex.create({
     borderRadius: '17px 17px 9px 9px',
     backgroundImage: 'linear-gradient(180deg, #fffcf8c9, #e9e2d58a)',
     boxShadow: '0 8px 24px -12px #69583c30, inset 0 2px 0 #ffffff',
+    '@media (max-width: 700px)': {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+      gap: 6,
+      width: '100%',
+      height: 0,
+      maxHeight: 0,
+      padding: '0 12px',
+      overflowX: 'auto',
+      overflowY: 'hidden',
+      borderWidth: 0,
+      borderRadius: 0,
+      backgroundImage: 'none',
+      boxShadow: 'none',
+      opacity: 0,
+      transition:
+        'height 180ms ease, max-height 180ms ease, padding 180ms ease, opacity 120ms ease',
+      scrollbarWidth: 'none',
+    },
+  },
+  openTray: {
+    '@media (max-width: 700px)': {
+      height: 126,
+      maxHeight: 126,
+      paddingTop: 7,
+      paddingBottom: 18,
+      opacity: 1,
+    },
   },
   swatch: {
     position: 'relative',
@@ -162,6 +249,10 @@ export const styles = stylex.create({
     },
     outline: { default: 'none', ':focus-visible': '2px solid #676d54' },
     outlineOffset: 3,
+    '@media (max-width: 700px)': {
+      width: '100%',
+      height: 94,
+    },
   },
   swatchLine: {
     position: 'absolute',
@@ -171,5 +262,62 @@ export const styles = stylex.create({
     borderTopWidth: 1,
     borderTopStyle: 'solid',
     borderTopColor: '#ffffff30',
+  },
+  sheetHandle: {
+    display: 'none',
+    '@media (max-width: 700px)': {
+      position: 'relative',
+      display: 'grid',
+      gridTemplateColumns: '1fr auto auto',
+      gap: 12,
+      width: '100%',
+      minHeight: 64,
+      padding: '23px 22px 12px',
+      alignItems: 'center',
+      borderWidth: 0,
+      borderRadius: '24px 24px 0 0',
+      backgroundColor: 'transparent',
+      color: '#45443b',
+      fontFamily: 'inherit',
+      fontSize: 15,
+      fontWeight: 700,
+      textAlign: 'left',
+      cursor: 'pointer',
+      touchAction: 'none',
+      outline: { default: 'none', ':focus-visible': '2px solid #676d54' },
+      outlineOffset: -5,
+    },
+  },
+  sheetGrip: {
+    '@media (max-width: 700px)': {
+      position: 'absolute',
+      top: 8,
+      left: '50%',
+      width: 38,
+      height: 4,
+      borderRadius: 999,
+      backgroundColor: '#b7b2a6',
+      transform: 'translateX(-50%)',
+    },
+  },
+  sheetCount: {
+    color: '#8a877b',
+    fontSize: 12,
+    fontWeight: 400,
+  },
+  chevron: {
+    width: 9,
+    height: 9,
+    borderTopWidth: 2,
+    borderTopStyle: 'solid',
+    borderTopColor: '#6d6b61',
+    borderLeftWidth: 2,
+    borderLeftStyle: 'solid',
+    borderLeftColor: '#6d6b61',
+    transform: 'rotate(45deg)',
+    transition: 'transform 180ms ease',
+  },
+  openChevron: {
+    transform: 'rotate(225deg)',
   },
 })

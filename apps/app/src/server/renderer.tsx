@@ -6,6 +6,7 @@ export const renderer = jsxRenderer(({ children }) => {
   return (
     <html>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <ViteClient />
         <Link href="/src/server/style.css" rel="stylesheet" />
         {/*
