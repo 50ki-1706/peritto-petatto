@@ -13,6 +13,7 @@ const palette = [
 ] as const
 
 type Color = (typeof palette)[number]['id']
+type DeleteSide = 'left' | 'right'
 type Note = {
   id: string
   color: Color
@@ -41,17 +42,31 @@ const initialNotes: Note[] = [
   {
     id: 'welcome-1',
     color: 'yellow',
-    text: '企画書\nたたき台を\nつくる！',
+    text: 'ぺりっと、\nぺたっと。\n思いついたことを\n付箋に書こう！',
     x: 60,
     y: 78,
     angle: -4,
   },
-  { id: 'welcome-2', color: 'pink', text: '明日\n打ち合わせ\n10:00〜', x: 318, y: 65, angle: -5 },
-  { id: 'welcome-3', color: 'blue', text: 'デザイン\nチェック\n\n✓  ✓', x: 576, y: 76, angle: -3 },
+  {
+    id: 'welcome-2',
+    color: 'pink',
+    text: '付箋を追加\n\n下の色を選ぶか\n上へ引き出そう',
+    x: 318,
+    y: 65,
+    angle: -5,
+  },
+  {
+    id: 'welcome-3',
+    color: 'blue',
+    text: '文字を書く\n\n付箋の本文を\n押して入力しよう',
+    x: 576,
+    y: 76,
+    angle: -3,
+  },
   {
     id: 'welcome-4',
     color: 'green',
-    text: '買い出し\n・たまねぎ\n・にんじん\n・牛乳\n・たまご',
+    text: '好きな場所へ\n\n付箋の上の線を\nつかんで動かそう',
     x: 834,
     y: 65,
     angle: -4,
@@ -59,7 +74,7 @@ const initialNotes: Note[] = [
   {
     id: 'welcome-5',
     color: 'purple',
-    text: 'やりたいこと\n\n・旅行の計画\n・ホテル予約\n・持ち物リスト',
+    text: 'いらなくなったら\n\n左右の端へ移動\n赤くなったら\n離して削除！',
     x: 84,
     y: 326,
     angle: -5,
@@ -67,7 +82,7 @@ const initialNotes: Note[] = [
   {
     id: 'welcome-6',
     color: 'orange',
-    text: '資料作成\n\n・スライド\n・データ整理',
+    text: '削除をやめる\n\n離す前に中央へ\n戻せば大丈夫',
     x: 342,
     y: 313,
     angle: -4,
@@ -75,7 +90,7 @@ const initialNotes: Note[] = [
   {
     id: 'welcome-7',
     color: 'yellow',
-    text: '週末の予定\n\n土曜  サッカー\n日曜  お買い物',
+    text: 'スマホで使う\n\n下のバーを\n上へスワイプして\n色を選ぼう',
     x: 600,
     y: 327,
     angle: -4,
@@ -83,7 +98,7 @@ const initialNotes: Note[] = [
   {
     id: 'welcome-8',
     color: 'pink',
-    text: 'アイデア\n\n付箋アプリ\nいい感じに！',
+    text: '色で分けよう\n\n予定やアイデアを\n好きな色の付箋に',
     x: 858,
     y: 316,
     angle: -5,
@@ -94,6 +109,8 @@ export function App() {
   const [notes, setNotes] = useState(initialNotes)
   const [preview, setPreview] = useState<Note | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [deleteSide, setDeleteSide] = useState<DeleteSide | null>(null)
+  const [announcement, setAnnouncement] = useState('')
   const [focusId, setFocusId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
@@ -123,8 +140,12 @@ export function App() {
   useEffect(() => {
     const media = window.matchMedia(MOBILE_QUERY)
     const updateViewport = () => {
+      cancelDrag()
       setIsMobile(media.matches)
-      if (!media.matches) setIsSheetOpen(false)
+      if (!media.matches) {
+        setIsSheetOpen(false)
+        setNotes((current) => current.map(constrain))
+      }
     }
     updateViewport()
     media.addEventListener('change', updateViewport)
@@ -137,7 +158,16 @@ export function App() {
     return {
       ...note,
       x: Math.max(14, Math.min(board.clientWidth - NOTE_SIZE - 14, note.x)),
-      y: Math.max(14, Math.min(board.clientHeight - NOTE_SIZE - 14, note.y)),
+      y: Math.max(
+        14,
+        Math.min(
+          board.clientHeight - NOTE_SIZE - 14,
+          (window.matchMedia(MOBILE_QUERY).matches
+            ? board.clientHeight
+            : (dockRef.current?.offsetTop ?? board.clientHeight) - 14) - NOTE_SIZE,
+          note.y,
+        ),
+      ),
     }
   }
 
@@ -149,7 +179,16 @@ export function App() {
 
   function addNote(note: Note) {
     const z = ++topZ.current
-    setNotes((current) => [...current, constrain({ ...note, z })])
+    // The mobile page can be much taller than the desktop board. Store a desktop
+    // position based on the visible drop location, independent of page scrolling.
+    const desktopPosition =
+      isMobile && note.mobilePlacement
+        ? {
+            x: note.mobilePlacement.x,
+            y: Math.max(14, note.mobilePlacement.y - window.scrollY),
+          }
+        : {}
+    setNotes((current) => [...current, constrain({ ...note, ...desktopPosition, z })])
     setFocusId(note.id)
   }
 
@@ -189,6 +228,7 @@ export function App() {
   function startMove(event: PointerEvent<HTMLButtonElement>, note: Note) {
     if (event.button !== 0 || drag.current) return
     const noteRect = event.currentTarget.closest('article')?.getBoundingClientRect()
+    setAnnouncement('')
     drag.current = {
       mode: 'move',
       note,
@@ -209,6 +249,26 @@ export function App() {
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
+  function deletionTarget(active: Drag, clientX: number, clientY: number): DeleteSide | null {
+    if (active.mode !== 'move' || !active.moved) return null
+    const board = boardRef.current!.getBoundingClientRect()
+    if (clientY < Math.max(0, board.top) || clientY > Math.min(window.innerHeight, board.bottom)) {
+      return null
+    }
+    const edgeWidth = Math.min(112, Math.max(56, window.innerWidth * 0.14))
+    const dx = clientX - active.startX
+    // Require an intentional sideways pull, even if the handle starts near an edge.
+    if (dx <= -24 && clientX <= board.left + edgeWidth) return 'left'
+    if (dx >= 24 && clientX >= board.right - edgeWidth) return 'right'
+    return null
+  }
+
+  function deleteNote(id: string) {
+    setNotes((current) => current.filter((note) => note.id !== id))
+    setFocusId((current) => (current === id ? null : current))
+    setAnnouncement('付箋を削除しました')
+  }
+
   function move(event: PointerEvent<HTMLButtonElement>) {
     const active = drag.current
     if (!active || active.pointerId !== event.pointerId) return
@@ -216,18 +276,16 @@ export function App() {
     const dy = event.clientY - active.startY
     if (!active.moved && Math.hypot(dx, dy) < 5) return
     active.moved = true
+    setDeleteSide(deletionTarget(active, event.clientX, event.clientY))
 
     if (isMobile && active.mode === 'move') {
-      const mobileDx = active.mobileBounds
-        ? Math.max(active.mobileBounds.minX, Math.min(active.mobileBounds.maxX, dx))
-        : dx
       setDraggingId(active.note.id)
       setNotes((current) =>
         current.map((note) =>
           note.id === active.note.id
             ? {
                 ...note,
-                mobileX: (active.note.mobileX ?? 0) + mobileDx,
+                mobileX: (active.note.mobileX ?? 0) + dx,
                 mobileY:
                   (active.note.mobileY ?? 0) + Math.max(active.mobileBounds?.minY ?? -Infinity, dy),
               }
@@ -247,9 +305,7 @@ export function App() {
     } else {
       setDraggingId(next.id)
       setNotes((current) =>
-        current.map((note) =>
-          note.id === next.id ? constrain({ ...note, x: next.x, y: next.y }) : note,
-        ),
+        current.map((note) => (note.id === next.id ? { ...note, x: next.x, y: next.y } : note)),
       )
     }
   }
@@ -257,6 +313,31 @@ export function App() {
   function finish(event: PointerEvent<HTMLButtonElement>) {
     const active = drag.current
     if (!active || active.pointerId !== event.pointerId) return
+    if (active.mode === 'move' && active.moved) {
+      if (deletionTarget(active, event.clientX, event.clientY)) {
+        deleteNote(active.note.id)
+      } else {
+        // Keep ordinary drops on the board; only dragging can cross its edges.
+        const dx = event.clientX - active.startX
+        const dy = event.clientY - active.startY
+        const bounds = active.mobileBounds
+        setNotes((current) =>
+          current.map((note) =>
+            note.id !== active.note.id
+              ? note
+              : isMobile
+                ? {
+                    ...note,
+                    mobileX:
+                      (active.note.mobileX ?? 0) +
+                      (bounds ? Math.max(bounds.minX, Math.min(bounds.maxX, dx)) : dx),
+                    mobileY: (active.note.mobileY ?? 0) + Math.max(bounds?.minY ?? -Infinity, dy),
+                  }
+                : constrain({ ...note, x: active.note.x + dx, y: active.note.y + dy }),
+          ),
+        )
+      }
+    }
     if (isMobile && active.mode === 'new' && !active.moved) {
       suppressClick.current = true
       addNote({
@@ -295,6 +376,7 @@ export function App() {
     drag.current = null
     setPreview(null)
     setDraggingId(null)
+    setDeleteSide(null)
     event.currentTarget.releasePointerCapture(event.pointerId)
   }
 
@@ -319,9 +401,22 @@ export function App() {
     drag.current = null
     setPreview(null)
     setDraggingId(null)
+    setDeleteSide(null)
   }
 
   function moveWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, note: Note) {
+    if (event.key === 'Delete' && !drag.current) {
+      event.preventDefault()
+      const index = notes.findIndex((item) => item.id === note.id)
+      const nextNote = notes[index + 1] ?? notes[index - 1]
+      deleteNote(note.id)
+      if (nextNote) editors.current.get(nextNote.id)?.focus()
+      else
+        dockRef.current
+          ?.querySelector<HTMLButtonElement>(isMobile ? 'button' : '#note-palette button')
+          ?.focus()
+      return
+    }
     const step = event.shiftKey ? 30 : 10
     const offsets: Record<string, [number, number]> = {
       ArrowLeft: [-step, 0],
@@ -357,6 +452,7 @@ export function App() {
             paperStyles[note.color],
             styles.position(note.x, note.y, note.angle, note.z ?? index + 1),
             draggingId === note.id && styles.lifted,
+            draggingId === note.id && styles.layer(topZ.current + 2),
             styles.mobileNote,
             styles.mobilePosition(note.mobileX ?? 0, note.mobileY ?? 0, note.angle),
             note.mobilePlacement &&
@@ -367,7 +463,7 @@ export function App() {
             type="button"
             {...stylex.props(styles.handle)}
             aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋を移動`}
-            title="ドラッグ、または矢印キーで移動"
+            title="ドラッグ、または矢印キーで移動。左右の端へドラッグ、またはDeleteキーで削除"
             onPointerDown={(event) => startMove(event, note)}
             onPointerMove={move}
             onPointerUp={finish}
@@ -398,6 +494,37 @@ export function App() {
           <span {...stylex.props(styles.fold)} aria-hidden="true" />
         </article>
       ))}
+
+      <div role="status" {...stylex.props(styles.srOnly)}>
+        {deleteSide ? '離すと付箋を削除します。戻すとキャンセルできます' : announcement}
+      </div>
+      {deleteSide && (
+        <div
+          aria-hidden="true"
+          data-delete-side={deleteSide}
+          {...stylex.props(
+            styles.deleteZone,
+            deleteSide === 'left' ? styles.deleteLeft : styles.deleteRight,
+            styles.layer(topZ.current + 3),
+          )}
+        >
+          <div {...stylex.props(styles.deleteLabel)}>
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6" />
+            </svg>
+            <span>離すと削除</span>
+          </div>
+        </div>
+      )}
 
       {preview && (
         <div
