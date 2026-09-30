@@ -1,7 +1,7 @@
 /** @jsxImportSource react */
 import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react'
-import { styles, paperStyles } from './board.styles'
+import { styles, paperStyles, foldStyles } from './board.styles'
 
 const palette = [
   { id: 'yellow', label: 'きいろ' },
@@ -58,7 +58,7 @@ const initialNotes: Note[] = [
   {
     id: 'welcome-3',
     color: 'blue',
-    text: '文字を書く\n\n付箋の本文を\n押して入力しよう',
+    text: '文字を書く\n\n付箋をダブルタップ\nして入力しよう',
     x: 576,
     y: 76,
     angle: -3,
@@ -66,7 +66,7 @@ const initialNotes: Note[] = [
   {
     id: 'welcome-4',
     color: 'green',
-    text: '好きな場所へ\n\n付箋の上の線を\nつかんで動かそう',
+    text: '好きな場所へ\n\n付箋のどこでも\nつかんで動かそう',
     x: 834,
     y: 65,
     angle: -4,
@@ -118,6 +118,7 @@ export function App() {
   const dockRef = useRef<HTMLElement>(null)
   const editors = useRef(new Map<string, HTMLTextAreaElement>())
   const drag = useRef<Drag | null>(null)
+  const lastTap = useRef<{ id: string; time: number; x: number; y: number } | null>(null)
   const suppressClick = useRef(false)
   const sheetGesture = useRef<{ y: number; moved: boolean } | null>(null)
   const topZ = useRef(initialNotes.length)
@@ -225,9 +226,13 @@ export function App() {
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  function startMove(event: PointerEvent<HTMLButtonElement>, note: Note) {
-    if (event.button !== 0 || drag.current) return
-    const noteRect = event.currentTarget.closest('article')?.getBoundingClientRect()
+  function startMove(event: PointerEvent<HTMLElement>, note: Note) {
+    if (event.button !== 0 || !event.isPrimary || drag.current) return
+    if (focusId === note.id && event.target === editors.current.get(note.id)) return
+    event.preventDefault()
+    setFocusId(null)
+    event.currentTarget.focus({ preventScroll: true })
+    const noteRect = event.currentTarget.getBoundingClientRect()
     setAnnouncement('')
     drag.current = {
       mode: 'move',
@@ -257,7 +262,7 @@ export function App() {
     }
     const edgeWidth = Math.min(112, Math.max(56, window.innerWidth * 0.14))
     const dx = clientX - active.startX
-    // Require an intentional sideways pull, even if the handle starts near an edge.
+    // Require an intentional sideways pull, even if the gesture starts near an edge.
     if (dx <= -24 && clientX <= board.left + edgeWidth) return 'left'
     if (dx >= 24 && clientX >= board.right - edgeWidth) return 'right'
     return null
@@ -269,13 +274,14 @@ export function App() {
     setAnnouncement('付箋を削除しました')
   }
 
-  function move(event: PointerEvent<HTMLButtonElement>) {
+  function move(event: PointerEvent<HTMLElement>) {
     const active = drag.current
     if (!active || active.pointerId !== event.pointerId) return
     const dx = event.clientX - active.startX
     const dy = event.clientY - active.startY
     if (!active.moved && Math.hypot(dx, dy) < 5) return
     active.moved = true
+    lastTap.current = null
     setDeleteSide(deletionTarget(active, event.clientX, event.clientY))
 
     if (isMobile && active.mode === 'move') {
@@ -310,7 +316,7 @@ export function App() {
     }
   }
 
-  function finish(event: PointerEvent<HTMLButtonElement>) {
+  function finish(event: PointerEvent<HTMLElement>) {
     const active = drag.current
     if (!active || active.pointerId !== event.pointerId) return
     if (active.mode === 'move' && active.moved) {
@@ -378,10 +384,29 @@ export function App() {
     setDraggingId(null)
     setDeleteSide(null)
     event.currentTarget.releasePointerCapture(event.pointerId)
+    if (active.mode === 'move' && !active.moved) {
+      const previous = lastTap.current
+      if (
+        previous?.id === active.note.id &&
+        event.timeStamp - previous.time <= 350 &&
+        Math.hypot(event.clientX - previous.x, event.clientY - previous.y) <= 24
+      ) {
+        lastTap.current = null
+        setFocusId(active.note.id)
+      } else {
+        lastTap.current = {
+          id: active.note.id,
+          time: event.timeStamp,
+          x: event.clientX,
+          y: event.clientY,
+        }
+      }
+    }
   }
 
   function cancelDrag() {
     const active = drag.current
+    if (active) lastTap.current = null
     if (active?.mode === 'move') {
       setNotes((current) =>
         current.map((note) =>
@@ -404,13 +429,19 @@ export function App() {
     setDeleteSide(null)
   }
 
-  function moveWithKeyboard(event: KeyboardEvent<HTMLButtonElement>, note: Note) {
+  function moveWithKeyboard(event: KeyboardEvent<HTMLElement>, note: Note) {
+    if (event.target !== event.currentTarget) return
+    if ((event.key === 'Enter' || event.key === ' ') && !drag.current) {
+      event.preventDefault()
+      setFocusId(note.id)
+      return
+    }
     if (event.key === 'Delete' && !drag.current) {
       event.preventDefault()
       const index = notes.findIndex((item) => item.id === note.id)
       const nextNote = notes[index + 1] ?? notes[index - 1]
       deleteNote(note.id)
-      if (nextNote) editors.current.get(nextNote.id)?.focus()
+      if (nextNote) editors.current.get(nextNote.id)?.closest('article')?.focus()
       else
         dockRef.current
           ?.querySelector<HTMLButtonElement>(isMobile ? 'button' : '#note-palette button')
@@ -449,6 +480,7 @@ export function App() {
           key={note.id}
           {...stylex.props(
             styles.note,
+            focusId !== note.id && styles.draggable,
             paperStyles[note.color],
             styles.position(note.x, note.y, note.angle, note.z ?? index + 1),
             draggingId === note.id && styles.lifted,
@@ -458,31 +490,35 @@ export function App() {
             note.mobilePlacement &&
               styles.mobilePlaced(note.mobilePlacement.x, note.mobilePlacement.y),
           )}
+          tabIndex={focusId === note.id ? -1 : 0}
+          aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋`}
+          aria-keyshortcuts="Enter Space ArrowLeft ArrowRight ArrowUp ArrowDown Delete"
+          title="どこでもドラッグで移動。ダブルタップで編集。矢印キーで移動、Enterで編集、Deleteで削除"
+          onKeyDown={(event) => moveWithKeyboard(event, note)}
+          onPointerDown={(event) => startMove(event, note)}
+          onPointerMove={move}
+          onPointerUp={finish}
+          onPointerCancel={cancelDrag}
+          onLostPointerCapture={cancelDrag}
         >
-          <button
-            type="button"
-            {...stylex.props(styles.handle)}
-            aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋を移動`}
-            title="ドラッグ、または矢印キーで移動。左右の端へドラッグ、またはDeleteキーで削除"
-            onPointerDown={(event) => startMove(event, note)}
-            onPointerMove={move}
-            onPointerUp={finish}
-            onPointerCancel={cancelDrag}
-            onLostPointerCapture={cancelDrag}
-            onKeyDown={(event) => moveWithKeyboard(event, note)}
-          >
-            <span {...stylex.props(styles.grip)} aria-hidden="true" />
-          </button>
           <textarea
             ref={(element) => {
               if (element) editors.current.set(note.id, element)
               else editors.current.delete(note.id)
             }}
-            {...stylex.props(styles.editor)}
+            {...stylex.props(styles.editor, focusId !== note.id && styles.inactiveEditor)}
+            readOnly={focusId !== note.id}
+            tabIndex={focusId === note.id ? 0 : -1}
             aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋のテキスト`}
             spellCheck={false}
             value={note.text}
             onFocus={() => bringToFront(note.id)}
+            onBlur={() => setFocusId((current) => (current === note.id ? null : current))}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && !event.nativeEvent.isComposing) {
+                event.currentTarget.closest('article')?.focus()
+              }
+            }}
             onChange={(event) =>
               setNotes((current) =>
                 current.map((item) =>
@@ -491,7 +527,7 @@ export function App() {
               )
             }
           />
-          <span {...stylex.props(styles.fold)} aria-hidden="true" />
+          <span {...stylex.props(styles.fold, foldStyles[note.color])} aria-hidden="true" />
         </article>
       ))}
 
@@ -540,7 +576,7 @@ export function App() {
               styles.mobilePlaced(preview.mobilePlacement.x, preview.mobilePlacement.y),
           )}
         >
-          <span {...stylex.props(styles.fold)} />
+          <span {...stylex.props(styles.fold, foldStyles[preview.color])} />
         </div>
       )}
 
@@ -629,7 +665,7 @@ export function App() {
               }}
             >
               <span {...stylex.props(styles.swatchLine)} aria-hidden="true" />
-              <span {...stylex.props(styles.fold)} aria-hidden="true" />
+              <span {...stylex.props(styles.fold, foldStyles[color.id])} aria-hidden="true" />
             </button>
           ))}
         </div>

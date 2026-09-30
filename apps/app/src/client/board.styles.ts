@@ -27,6 +27,15 @@ export const paperStyles = stylex.create({
   },
 })
 
+export const foldStyles = stylex.create({
+  yellow: { backgroundColor: '#ecd15b' },
+  pink: { backgroundColor: '#e994bb' },
+  blue: { backgroundColor: '#7fc5e8' },
+  green: { backgroundColor: '#98ce86' },
+  purple: { backgroundColor: '#b497dc' },
+  orange: { backgroundColor: '#eeb05d' },
+})
+
 export const styles = stylex.create({
   app: {
     backgroundColor: '#f7f4ed',
@@ -64,10 +73,18 @@ export const styles = stylex.create({
     position: 'absolute',
     width: 206,
     height: 206,
-    borderRadius: '2px 3px 19px 3px',
+    borderRadius: '2px 3px 20px 3px',
     boxShadow: '2px 9px 11px -5px #66532e30, 0 18px 24px -17px #66532e38',
     transformOrigin: '50% 25%',
+    outline: { default: 'none', ':focus-visible': '2px solid #676d54' },
+    outlineOffset: 3,
   },
+  draggable: {
+    cursor: { default: 'grab', ':active': 'grabbing' },
+    touchAction: 'none',
+    userSelect: 'none',
+  },
+  inactiveEditor: { pointerEvents: 'none', userSelect: 'none' },
   position: (x: number, y: number, angle: number, zIndex: number) => ({
     left: x,
     top: y,
@@ -98,40 +115,11 @@ export const styles = stylex.create({
     },
   }),
   lifted: { boxShadow: '4px 20px 28px -10px #66532e50', cursor: 'grabbing' },
-  handle: {
-    display: 'flex',
-    width: '100%',
-    height: 28,
-    padding: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 0,
-    borderRadius: '2px 3px 0 0',
-    backgroundColor: { default: '#ffffff14', ':hover': '#ffffff35' },
-    cursor: { default: 'grab', ':active': 'grabbing' },
-    touchAction: 'none',
-    outline: { default: 'none', ':focus-visible': '2px solid #676d54' },
-    outlineOffset: 3,
-    '@media (max-width: 700px)': {
-      height: 44,
-    },
-  },
-  grip: {
-    display: 'block',
-    width: 21,
-    height: 3,
-    borderTopWidth: 1,
-    borderTopStyle: 'solid',
-    borderTopColor: '#71634628',
-    borderBottomWidth: 1,
-    borderBottomStyle: 'solid',
-    borderBottomColor: '#71634628',
-  },
   editor: {
     display: 'block',
     width: '100%',
-    height: 173,
-    padding: '7px 23px 12px',
+    height: '100%',
+    padding: '24px 23px 20px',
     borderWidth: 0,
     resize: 'none',
     outline: { default: 'none', ':focus-visible': '1px dashed #71634660' },
@@ -144,8 +132,7 @@ export const styles = stylex.create({
     letterSpacing: '0.025em',
     scrollbarWidth: 'thin',
     '@media (max-width: 700px)': {
-      height: 'calc(100% - 44px)',
-      padding: '10px 25px 18px',
+      padding: '30px 25px 24px',
       fontSize: 21,
     },
   },
@@ -155,10 +142,10 @@ export const styles = stylex.create({
     bottom: 0,
     width: 20,
     height: 20,
-    borderRadius: '16px 0 17px 0',
-    backgroundImage:
-      'linear-gradient(135deg, #ffffff00 20%, #ffffff65 48%, #0000000c 52%, #ffffff40 100%)',
-    boxShadow: '-2px -2px 3px #675d2710',
+    // The outer curve follows the paper's rounded corner; the inner curve
+    // reveals a small, curled underside rather than a separate corner badge.
+    clipPath: 'path("M 0 20 C 5 16 5 10 6 6 C 10 5 16 3 20 0 C 20 11 11 20 0 20 Z")',
+    backgroundImage: 'linear-gradient(135deg, #ffffff70, #ffffff00 65%, #00000008)',
     pointerEvents: 'none',
   },
   preview: { pointerEvents: 'none' },
@@ -276,7 +263,7 @@ export const styles = stylex.create({
     borderWidth: 1,
     borderStyle: 'solid',
     borderColor: '#ffffff55',
-    borderRadius: '3px 3px 13px 3px',
+    borderRadius: '3px 3px 20px 3px',
     boxShadow: '2px 3px 5px #67502d26, 0 -3px 0 -1px #ffffff60, 0 -6px 0 -3px #c9b78450',
     cursor: { default: 'grab', ':active': 'grabbing' },
     touchAction: 'none',
