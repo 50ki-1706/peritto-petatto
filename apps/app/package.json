@@ -17,7 +17,8 @@
     "@tanstack/react-query": "^5.103.2",
     "hono": "^4.13.9",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.44.0",
