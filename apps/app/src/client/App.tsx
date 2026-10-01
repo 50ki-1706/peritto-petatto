@@ -3,6 +3,7 @@ import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react'
 import { styles, paperStyles, foldStyles } from './board.styles'
 import { useNoteFeedback } from './useNoteFeedback'
+import { useCenteredEditor } from './useCenteredEditor'
 
 const palette = [
   { id: 'yellow', label: 'きいろ' },
@@ -125,9 +126,11 @@ export function App() {
   const sheetGesture = useRef<{ y: number; moved: boolean } | null>(null)
   const topZ = useRef(initialNotes.length)
 
+  useCenteredEditor(focusId, isMobile, editors)
+
   useEffect(() => {
-    if (focusId) editors.current.get(focusId)?.focus()
-  }, [focusId])
+    if (focusId) editors.current.get(focusId)?.focus({ preventScroll: isMobile })
+  }, [focusId, isMobile])
 
   useEffect(() => {
     const cancelOnEscape = (event: globalThis.KeyboardEvent) => {
@@ -499,6 +502,7 @@ export function App() {
             styles.mobilePosition(note.mobileX ?? 0, note.mobileY ?? 0, note.angle),
             note.mobilePlacement &&
               styles.mobilePlaced(note.mobilePlacement.x, note.mobilePlacement.y),
+            isMobile && focusId === note.id && styles.layer(topZ.current + 2),
           )}
           tabIndex={focusId === note.id ? -1 : 0}
           aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋`}
@@ -651,6 +655,10 @@ export function App() {
               aria-label={`${color.label}の付箋を追加`}
               {...stylex.props(styles.swatch, paperStyles[color.id])}
               onPointerDown={(event) => startNew(event, color.id)}
+              onMouseDown={(event) => {
+                // A touch-generated mouse event must not steal the new editor's focus.
+                if (isMobile) event.preventDefault()
+              }}
               onPointerMove={move}
               onPointerUp={finish}
               onPointerCancel={cancelDrag}
