@@ -96,15 +96,13 @@ export const styles = stylex.create({
       position: 'relative',
       left: 'auto',
       top: 'auto',
-      width: 'min(88vw, 360px)',
-      height: 'min(88vw, 360px)',
+      width: '60vw',
+      height: '60vw',
       margin: '0 auto 22px',
     },
   },
-  mobilePosition: (x: number, y: number, angle: number) => ({
-    '@media (max-width: 700px)': {
-      transform: `translate3d(${x}px, ${y}px, 0) rotate(${angle}deg)`,
-    },
+  mobileBoardHeight: (height: number) => ({
+    '@media (max-width: 700px)': { height },
   }),
   mobilePlaced: (x: number, y: number) => ({
     '@media (max-width: 700px)': {
@@ -132,8 +130,9 @@ export const styles = stylex.create({
     letterSpacing: '0.025em',
     scrollbarWidth: 'thin',
     '@media (max-width: 700px)': {
-      padding: '30px 25px 24px',
-      fontSize: 21,
+      padding: '18px 16px',
+      fontSize: 'clamp(16px, 4.2vw, 21px)',
+      lineHeight: 1.5,
     },
   },
   fold: {

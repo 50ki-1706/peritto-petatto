@@ -17,8 +17,6 @@ export type Note = {
   text: string
   x: number
   y: number
-  mobileX?: number
-  mobileY?: number
   mobilePlacement?: { x: number; y: number }
   angle: number
   z?: number
