@@ -26,6 +26,10 @@ type Drag = {
 
 const NOTE_SIZE = 206
 const MOBILE_QUERY = '(max-width: 700px)'
+const MOBILE_DRAG_THRESHOLD = 12
+const DESKTOP_DRAG_THRESHOLD = 5
+const MOBILE_DOUBLE_TAP_MS = 500
+const DESKTOP_DOUBLE_TAP_MS = 350
 
 export function App() {
   const feedback = useNoteFeedback()
@@ -223,7 +227,8 @@ export function App() {
     if (!active || active.pointerId !== event.pointerId) return
     const dx = event.clientX - active.startX
     const dy = event.clientY - active.startY
-    if (!active.moved && Math.hypot(dx, dy) < 5) return
+    const dragThreshold = isMobile ? MOBILE_DRAG_THRESHOLD : DESKTOP_DRAG_THRESHOLD
+    if (!active.moved && Math.hypot(dx, dy) < dragThreshold) return
     if (!active.moved) feedback.peel()
     active.moved = true
     lastTap.current = null
@@ -323,7 +328,8 @@ export function App() {
       const previous = lastTap.current
       if (
         previous?.id === active.note.id &&
-        event.timeStamp - previous.time <= 350 &&
+        event.timeStamp - previous.time <=
+          (isMobile ? MOBILE_DOUBLE_TAP_MS : DESKTOP_DOUBLE_TAP_MS) &&
         Math.hypot(event.clientX - previous.x, event.clientY - previous.y) <= 24
       ) {
         lastTap.current = null
