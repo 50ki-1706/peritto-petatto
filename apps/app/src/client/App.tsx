@@ -212,9 +212,7 @@ export function App() {
         : {}
     setNotes((current) => {
       const next = constrain({ ...note, ...desktopPosition, z })
-      return isMobile
-        ? settleMobileNote([...current, next], next.id, note.mobilePlacement!)
-        : [...current, next]
+      return [...current, next]
     })
     setFocusId(note.id)
     feedback.stick()
@@ -238,18 +236,10 @@ export function App() {
     }
   }
 
-  function settleMobileNote(current: Note[], id: string, desired: Position): Note[] {
-    const layout = layoutMobileNotes(current, window.innerWidth)
+  function positionMobileNote(current: Note[], id: string, desired: Position): Note[] {
     const note = current.find((item) => item.id === id)!
-    const placed = placeMobileNote(
-      note,
-      desired,
-      layout.filter((item) => item.id !== id),
-      window.innerWidth,
-    )
-    const positions = new Map(layout.map((item) => [item.id, item]))
-    positions.set(id, placed)
-    return current.map((item) => ({ ...item, mobilePlacement: positions.get(item.id)! }))
+    const placed = placeMobileNote(note, desired, window.innerWidth)
+    return current.map((item) => (item.id === id ? { ...item, mobilePlacement: placed } : item))
   }
 
   function startNew(event: PointerEvent<HTMLButtonElement>, color: Color) {
@@ -360,7 +350,7 @@ export function App() {
         const dy = event.clientY - active.startY
         setNotes((current) =>
           isMobile
-            ? settleMobileNote(current, active.note.id, {
+            ? positionMobileNote(current, active.note.id, {
                 x: active.mobileOrigin!.x + dx,
                 y: active.mobileOrigin!.y + dy,
               })
@@ -489,7 +479,7 @@ export function App() {
     setNotes((current) => {
       if (isMobile) {
         const origin = mobilePositions.get(note.id)!
-        return settleMobileNote(current, note.id, {
+        return positionMobileNote(current, note.id, {
           x: origin.x + offset[0],
           y: origin.y + offset[1],
         })
