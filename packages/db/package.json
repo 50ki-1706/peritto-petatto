@@ -4,6 +4,9 @@
   "private": true,
   "description": "",
   "type": "module",
+  "exports": {
+    ".": "./src/schema.ts"
+  },
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply peritto-petatto --local --config ../../apps/app/wrangler.jsonc",

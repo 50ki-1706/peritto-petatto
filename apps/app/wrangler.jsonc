@@ -3,7 +3,16 @@
   "name": "api",
   "account_id": "9135d42f432d487a4755560f331db1ae",
   "compatibility_date": "2025-08-03",
+  "compatibility_flags": ["nodejs_compat"],
   "main": "./src/server/index.tsx",
+  "secrets": {
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "BETTER_AUTH_URL",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+    ],
+  },
   "d1_databases": [
     {
       "binding": "peritto_petatto",
