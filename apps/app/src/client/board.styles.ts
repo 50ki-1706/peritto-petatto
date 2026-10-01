@@ -84,7 +84,13 @@ export const styles = stylex.create({
     touchAction: 'none',
     userSelect: 'none',
   },
-  inactiveEditor: { pointerEvents: 'none', userSelect: 'none' },
+  inactiveEditor: {
+    // Let desktop wheel and touchpad gestures reach overflowing read-only text.
+    // Mobile keeps pointer events on the note so dragging and page scrolling win.
+    pointerEvents: 'auto',
+    userSelect: 'none',
+    '@media (max-width: 700px)': { pointerEvents: 'none' },
+  },
   position: (x: number, y: number, angle: number, zIndex: number) => ({
     left: x,
     top: y,
