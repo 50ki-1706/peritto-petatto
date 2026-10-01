@@ -13,6 +13,8 @@ export function useCenteredEditor(
     if (!note) return
 
     const viewport = window.visualViewport
+    const root = document.documentElement
+    const body = document.body
     const original = {
       position: note.style.position,
       left: note.style.left,
@@ -22,6 +24,8 @@ export function useCenteredEditor(
       height: note.style.height,
       transform: note.style.transform,
       translate: note.style.translate,
+      rootOverflow: root.style.overflow,
+      bodyOverflow: body.style.overflow,
     }
     let frame = 0
     const settleTimers: number[] = []
@@ -50,7 +54,12 @@ export function useCenteredEditor(
       frame = requestAnimationFrame(center)
     }
 
-    center()
+    // Do not move the note during the pointerup that completes a double tap.
+    // Moving it immediately makes iOS dispatch the following synthetic click to
+    // the board underneath, which blurs the editor as soon as it opens.
+    scheduleCenter()
+    root.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
     // Safari can focus the textarea before the keyboard animation has updated
     // visualViewport. These follow-up passes cover that transition even when a
     // resize event is skipped (notably after a drag-created note is focused).
@@ -68,7 +77,18 @@ export function useCenteredEditor(
       viewport?.removeEventListener('scroll', scheduleCenter)
       window.removeEventListener('resize', scheduleCenter)
       window.removeEventListener('scroll', scheduleCenter)
-      Object.assign(note.style, original)
+      Object.assign(note.style, {
+        position: original.position,
+        left: original.left,
+        top: original.top,
+        margin: original.margin,
+        width: original.width,
+        height: original.height,
+        transform: original.transform,
+        translate: original.translate,
+      })
+      root.style.overflow = original.rootOverflow
+      body.style.overflow = original.bodyOverflow
     }
   }, [focusId, isMobile, editors])
 }
