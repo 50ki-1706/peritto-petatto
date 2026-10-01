@@ -2,6 +2,7 @@
 import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react'
 import { styles, paperStyles, foldStyles } from './board.styles'
+import { useNoteFeedback } from './useNoteFeedback'
 
 const palette = [
   { id: 'yellow', label: 'きいろ' },
@@ -106,6 +107,7 @@ const initialNotes: Note[] = [
 ]
 
 export function App() {
+  const feedback = useNoteFeedback()
   const [notes, setNotes] = useState(initialNotes)
   const [preview, setPreview] = useState<Note | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -191,10 +193,15 @@ export function App() {
         : {}
     setNotes((current) => [...current, constrain({ ...note, ...desktopPosition, z })])
     setFocusId(note.id)
+    feedback.stick()
   }
 
   function newNote(color: Color, x: number, y: number): Note {
-    return { id: crypto.randomUUID(), color, text: '', x, y, angle: -3 }
+    // randomUUID is unavailable on HTTP LAN URLs used for phone testing.
+    const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('')
+    return { id, color, text: '', x, y, angle: -3 }
   }
 
   function mobilePlacement(clientX: number, clientY: number) {
@@ -269,6 +276,7 @@ export function App() {
   }
 
   function deleteNote(id: string) {
+    feedback.remove()
     setNotes((current) => current.filter((note) => note.id !== id))
     setFocusId((current) => (current === id ? null : current))
     setAnnouncement('付箋を削除しました')
@@ -280,6 +288,7 @@ export function App() {
     const dx = event.clientX - active.startX
     const dy = event.clientY - active.startY
     if (!active.moved && Math.hypot(dx, dy) < 5) return
+    if (!active.moved) feedback.peel()
     active.moved = true
     lastTap.current = null
     setDeleteSide(deletionTarget(active, event.clientX, event.clientY))
@@ -323,6 +332,7 @@ export function App() {
       if (deletionTarget(active, event.clientX, event.clientY)) {
         deleteNote(active.note.id)
       } else {
+        feedback.stick()
         // Keep ordinary drops on the board; only dragging can cross its edges.
         const dx = event.clientX - active.startX
         const dy = event.clientY - active.startY
