@@ -1,4 +1,5 @@
 import { useLayoutEffect, type RefObject } from 'react'
+import { mobileNoteSize } from './mobileLayout'
 
 /** Keep the active mobile note inside the area above the software keyboard. */
 export function useCenteredEditor(
@@ -26,7 +27,7 @@ export function useCenteredEditor(
       const width = viewport?.width ?? window.innerWidth
       const height = viewport?.height ?? window.innerHeight
       // Shrink the paper on short screens; the textarea still scrolls normally.
-      const size = Math.max(1, Math.min(window.innerWidth * 0.88, 360, width - 32, height - 32))
+      const size = Math.max(1, Math.min(mobileNoteSize(window.innerWidth), width - 32, height - 32))
       note.style.width = `${size}px`
       note.style.height = `${size}px`
       note.style.transform = 'none'

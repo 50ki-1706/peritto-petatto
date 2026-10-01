@@ -4,6 +4,13 @@ import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } fr
 import { styles, paperStyles, foldStyles } from './board.styles'
 import { useNoteFeedback } from './useNoteFeedback'
 import { useCenteredEditor } from './useCenteredEditor'
+import {
+  layoutMobileNotes,
+  mobileBounds,
+  mobileNoteSize,
+  placeMobileNote,
+  type Position,
+} from './mobileLayout'
 
 const palette = [
   { id: 'yellow', label: 'きいろ' },
@@ -22,8 +29,6 @@ type Note = {
   text: string
   x: number
   y: number
-  mobileX?: number
-  mobileY?: number
   mobilePlacement?: { x: number; y: number }
   angle: number
   z?: number
@@ -35,7 +40,7 @@ type Drag = {
   startY: number
   moved: boolean
   pointerId: number
-  mobileBounds?: { minX: number; maxX: number; minY: number }
+  mobileOrigin?: Position
 }
 
 const NOTE_SIZE = 206
@@ -116,6 +121,8 @@ export function App() {
   const [announcement, setAnnouncement] = useState('')
   const [focusId, setFocusId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [viewportWidth, setViewportWidth] = useState(390)
+  const [mobileDragPosition, setMobileDragPosition] = useState<Position | null>(null)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const boardRef = useRef<HTMLElement>(null)
   const dockRef = useRef<HTMLElement>(null)
@@ -125,6 +132,14 @@ export function App() {
   const suppressClick = useRef(false)
   const sheetGesture = useRef<{ y: number; moved: boolean } | null>(null)
   const topZ = useRef(initialNotes.length)
+
+  const mobileLayout = layoutMobileNotes(notes, viewportWidth)
+  const mobilePositions = new Map(mobileLayout.map((note) => [note.id, note]))
+  const mobileHeight =
+    Math.max(
+      0,
+      ...mobileLayout.map((note) => mobileBounds(note, mobileNoteSize(viewportWidth)).bottom),
+    ) + 164
 
   useCenteredEditor(focusId, isMobile, editors)
 
@@ -148,14 +163,15 @@ export function App() {
     const updateViewport = () => {
       cancelDrag()
       setIsMobile(media.matches)
+      setViewportWidth(window.innerWidth)
       if (!media.matches) {
         setIsSheetOpen(false)
         setNotes((current) => current.map(constrain))
       }
     }
     updateViewport()
-    media.addEventListener('change', updateViewport)
-    return () => media.removeEventListener('change', updateViewport)
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
   }, [])
 
   function constrain(note: Note): Note {
@@ -194,7 +210,12 @@ export function App() {
             y: Math.max(14, note.mobilePlacement.y - window.scrollY),
           }
         : {}
-    setNotes((current) => [...current, constrain({ ...note, ...desktopPosition, z })])
+    setNotes((current) => {
+      const next = constrain({ ...note, ...desktopPosition, z })
+      return isMobile
+        ? settleMobileNote([...current, next], next.id, note.mobilePlacement!)
+        : [...current, next]
+    })
     setFocusId(note.id)
     feedback.stick()
   }
@@ -210,11 +231,25 @@ export function App() {
   function mobilePlacement(clientX: number, clientY: number) {
     const board = boardRef.current!
     const rect = board.getBoundingClientRect()
-    const size = Math.min(window.innerWidth * 0.88, 360)
+    const size = mobileNoteSize(window.innerWidth)
     return {
       x: Math.max(12, Math.min(board.clientWidth - size - 12, clientX - rect.left - size / 2)),
       y: Math.max(18, clientY - rect.top - 44),
     }
+  }
+
+  function settleMobileNote(current: Note[], id: string, desired: Position): Note[] {
+    const layout = layoutMobileNotes(current, window.innerWidth)
+    const note = current.find((item) => item.id === id)!
+    const placed = placeMobileNote(
+      note,
+      desired,
+      layout.filter((item) => item.id !== id),
+      window.innerWidth,
+    )
+    const positions = new Map(layout.map((item) => [item.id, item]))
+    positions.set(id, placed)
+    return current.map((item) => ({ ...item, mobilePlacement: positions.get(item.id)! }))
   }
 
   function startNew(event: PointerEvent<HTMLButtonElement>, color: Color) {
@@ -242,7 +277,6 @@ export function App() {
     event.preventDefault()
     setFocusId(null)
     event.currentTarget.focus({ preventScroll: true })
-    const noteRect = event.currentTarget.getBoundingClientRect()
     setAnnouncement('')
     drag.current = {
       mode: 'move',
@@ -251,14 +285,7 @@ export function App() {
       startY: event.clientY,
       moved: false,
       pointerId: event.pointerId,
-      mobileBounds:
-        isMobile && noteRect
-          ? {
-              minX: 10 - noteRect.left,
-              maxX: window.innerWidth - 10 - noteRect.right,
-              minY: 10 - noteRect.top - window.scrollY,
-            }
-          : undefined,
+      mobileOrigin: isMobile ? mobilePositions.get(note.id) : undefined,
     }
     bringToFront(note.id)
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -298,18 +325,10 @@ export function App() {
 
     if (isMobile && active.mode === 'move') {
       setDraggingId(active.note.id)
-      setNotes((current) =>
-        current.map((note) =>
-          note.id === active.note.id
-            ? {
-                ...note,
-                mobileX: (active.note.mobileX ?? 0) + dx,
-                mobileY:
-                  (active.note.mobileY ?? 0) + Math.max(active.mobileBounds?.minY ?? -Infinity, dy),
-              }
-            : note,
-        ),
-      )
+      setMobileDragPosition({
+        x: active.mobileOrigin!.x + dx,
+        y: Math.max(14, active.mobileOrigin!.y + dy),
+      })
       return
     }
 
@@ -339,21 +358,17 @@ export function App() {
         // Keep ordinary drops on the board; only dragging can cross its edges.
         const dx = event.clientX - active.startX
         const dy = event.clientY - active.startY
-        const bounds = active.mobileBounds
         setNotes((current) =>
-          current.map((note) =>
-            note.id !== active.note.id
-              ? note
-              : isMobile
-                ? {
-                    ...note,
-                    mobileX:
-                      (active.note.mobileX ?? 0) +
-                      (bounds ? Math.max(bounds.minX, Math.min(bounds.maxX, dx)) : dx),
-                    mobileY: (active.note.mobileY ?? 0) + Math.max(bounds?.minY ?? -Infinity, dy),
-                  }
-                : constrain({ ...note, x: active.note.x + dx, y: active.note.y + dy }),
-          ),
+          isMobile
+            ? settleMobileNote(current, active.note.id, {
+                x: active.mobileOrigin!.x + dx,
+                y: active.mobileOrigin!.y + dy,
+              })
+            : current.map((note) =>
+                note.id === active.note.id
+                  ? constrain({ ...note, x: active.note.x + dx, y: active.note.y + dy })
+                  : note,
+              ),
         )
       }
     }
@@ -395,6 +410,7 @@ export function App() {
     drag.current = null
     setPreview(null)
     setDraggingId(null)
+    setMobileDragPosition(null)
     setDeleteSide(null)
     event.currentTarget.releasePointerCapture(event.pointerId)
     if (active.mode === 'move' && !active.moved) {
@@ -428,8 +444,6 @@ export function App() {
                 ...note,
                 x: active.note.x,
                 y: active.note.y,
-                mobileX: active.note.mobileX,
-                mobileY: active.note.mobileY,
               }
             : note,
         ),
@@ -439,6 +453,7 @@ export function App() {
     drag.current = null
     setPreview(null)
     setDraggingId(null)
+    setMobileDragPosition(null)
     setDeleteSide(null)
   }
 
@@ -471,23 +486,32 @@ export function App() {
     const offset = offsets[event.key]
     if (!offset) return
     event.preventDefault()
-    setNotes((current) =>
-      current.map((item) =>
+    setNotes((current) => {
+      if (isMobile) {
+        const origin = mobilePositions.get(note.id)!
+        return settleMobileNote(current, note.id, {
+          x: origin.x + offset[0],
+          y: origin.y + offset[1],
+        })
+      }
+      return current.map((item) =>
         item.id === note.id
-          ? isMobile
-            ? {
-                ...item,
-                mobileX: (item.mobileX ?? 0) + offset[0],
-                mobileY: (item.mobileY ?? 0) + offset[1],
-              }
-            : constrain({ ...item, x: item.x + offset[0], y: item.y + offset[1] })
+          ? constrain({ ...item, x: item.x + offset[0], y: item.y + offset[1] })
           : item,
-      ),
-    )
+      )
+    })
   }
 
   return (
-    <main ref={boardRef} {...stylex.props(styles.app, styles.board)} aria-label="付箋ボード">
+    <main
+      ref={boardRef}
+      {...stylex.props(
+        styles.app,
+        styles.board,
+        isMobile && styles.mobileBoardHeight(mobileHeight),
+      )}
+      aria-label="付箋ボード"
+    >
       {notes.map((note, index) => (
         <article
           key={note.id}
@@ -499,9 +523,16 @@ export function App() {
             draggingId === note.id && styles.lifted,
             draggingId === note.id && styles.layer(topZ.current + 2),
             styles.mobileNote,
-            styles.mobilePosition(note.mobileX ?? 0, note.mobileY ?? 0, note.angle),
-            note.mobilePlacement &&
-              styles.mobilePlaced(note.mobilePlacement.x, note.mobilePlacement.y),
+            styles.mobilePlaced(
+              (draggingId === note.id && mobileDragPosition
+                ? mobileDragPosition
+                : mobilePositions.get(note.id)!
+              ).x,
+              (draggingId === note.id && mobileDragPosition
+                ? mobileDragPosition
+                : mobilePositions.get(note.id)!
+              ).y,
+            ),
             isMobile && focusId === note.id && styles.layer(topZ.current + 2),
           )}
           tabIndex={focusId === note.id ? -1 : 0}
