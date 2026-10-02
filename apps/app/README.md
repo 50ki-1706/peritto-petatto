@@ -12,6 +12,23 @@ Tauri desktop shell plus a Cloudflare Workers (Hono) server and a React client, 
 
 The server renders the HTML shell (including the client `<Script>`); React is mounted client-side.
 
+## Authentication
+
+The Hono server exposes Better Auth under `/api/auth/*`. Google OAuth accounts,
+sessions and application data are stored in D1 through Drizzle ORM.
+
+For local development, copy `.dev.vars.example` to the ignored `.dev.vars` file
+and replace all placeholders. `BETTER_AUTH_URL` must be
+`http://localhost:5173`; the matching Google OAuth redirect URI is
+`http://localhost:5173/api/auth/callback/google`.
+
+The real `.dev.vars` file and production secrets must never be committed.
+
+Google sign-in initiation is limited through the `AUTH_RATE_LIMITER` Workers
+binding. Each connecting IP can start up to 20 sign-ins per minute. Session
+checks and OAuth callbacks are not counted, so completing a normal login flow
+does not consume additional attempts.
+
 ## Commands
 
 Bootstrap once with `pnpm install` (pnpm remains the workspace package manager).

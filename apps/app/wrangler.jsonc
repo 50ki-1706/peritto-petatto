@@ -3,13 +3,32 @@
   "name": "api",
   "account_id": "9135d42f432d487a4755560f331db1ae",
   "compatibility_date": "2025-08-03",
+  "compatibility_flags": ["nodejs_compat"],
   "main": "./src/server/index.tsx",
+  "secrets": {
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "BETTER_AUTH_URL",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+    ],
+  },
   "d1_databases": [
     {
       "binding": "peritto_petatto",
       "database_name": "peritto-petatto",
       "database_id": "9a925e04-8b23-4012-bd99-c73190548545",
       "migrations_dir": "../../packages/db/migrations",
+    },
+  ],
+  "ratelimits": [
+    {
+      "name": "AUTH_RATE_LIMITER",
+      "namespace_id": "10001",
+      "simple": {
+        "limit": 20,
+        "period": 60,
+      },
     },
   ],
 }
