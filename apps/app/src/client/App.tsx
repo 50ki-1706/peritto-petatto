@@ -2,6 +2,7 @@
 import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react'
 import { AuthGate } from './AuthGate'
+import { NoteTextEditor } from './NoteTextEditor'
 import { styles, paperStyles, foldStyles } from './board.styles'
 import { palette, useNoteStore, type Color, type Note } from './stores/noteStore'
 import { useNoteFeedback } from './useNoteFeedback'
@@ -463,7 +464,7 @@ function NoteBoard() {
           onPointerCancel={cancelDrag}
           onLostPointerCapture={cancelDrag}
         >
-          <textarea
+          <NoteTextEditor
             data-note-editor
             ref={(element) => {
               if (element) editors.current.set(note.id, element)
