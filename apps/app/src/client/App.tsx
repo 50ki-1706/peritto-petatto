@@ -1,6 +1,7 @@
 /** @jsxImportSource react */
 import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react'
+import { AuthGate } from './AuthGate'
 import { styles, paperStyles, foldStyles } from './board.styles'
 import { initialNotes, palette, useNoteStore, type Color, type Note } from './stores/noteStore'
 import { useNoteFeedback } from './useNoteFeedback'
@@ -31,7 +32,7 @@ const DESKTOP_DRAG_THRESHOLD = 5
 const MOBILE_DOUBLE_TAP_MS = 500
 const DESKTOP_DOUBLE_TAP_MS = 350
 
-export function App() {
+function NoteBoard() {
   const feedback = useNoteFeedback()
   const notes = useNoteStore((state) => state.notes)
   const setNotes = useNoteStore((state) => state.setNotes)
@@ -633,5 +634,13 @@ export function App() {
         </div>
       </footer>
     </main>
+  )
+}
+
+export function App() {
+  return (
+    <AuthGate>
+      <NoteBoard />
+    </AuthGate>
   )
 }
