@@ -134,7 +134,6 @@ export const styles = stylex.create({
     fontSize: 18,
     lineHeight: 1.65,
     letterSpacing: '0.025em',
-    scrollbarWidth: 'thin',
     '@media (max-width: 700px)': {
       padding: '18px 16px',
       fontSize: 'clamp(16px, 4.2vw, 21px)',
