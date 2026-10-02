@@ -7,3 +7,32 @@
 body {
   margin: 0;
 }
+
+[data-note-editor] {
+  scrollbar-width: thin;
+  scrollbar-color: #71634680 transparent;
+}
+
+@supports selector(::-webkit-scrollbar) {
+  [data-note-editor] {
+    /* Native scrollbar settings override the custom rounded thumb. */
+    scrollbar-width: auto;
+    scrollbar-color: auto;
+  }
+
+  [data-note-editor]::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    background: transparent;
+  }
+
+  [data-note-editor]::-webkit-scrollbar-track,
+  [data-note-editor]::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  [data-note-editor]::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background: #71634680;
+  }
+}

@@ -84,7 +84,13 @@ export const styles = stylex.create({
     touchAction: 'none',
     userSelect: 'none',
   },
-  inactiveEditor: { pointerEvents: 'none', userSelect: 'none' },
+  inactiveEditor: {
+    // Let desktop wheel and touchpad gestures reach overflowing read-only text.
+    // Mobile keeps pointer events on the note so dragging and page scrolling win.
+    pointerEvents: 'auto',
+    userSelect: 'none',
+    '@media (max-width: 700px)': { pointerEvents: 'none' },
+  },
   position: (x: number, y: number, angle: number, zIndex: number) => ({
     left: x,
     top: y,
@@ -128,7 +134,6 @@ export const styles = stylex.create({
     fontSize: 18,
     lineHeight: 1.65,
     letterSpacing: '0.025em',
-    scrollbarWidth: 'thin',
     '@media (max-width: 700px)': {
       padding: '18px 16px',
       fontSize: 'clamp(16px, 4.2vw, 21px)',

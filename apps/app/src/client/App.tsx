@@ -459,6 +459,7 @@ export function App() {
           onLostPointerCapture={cancelDrag}
         >
           <textarea
+            data-note-editor
             ref={(element) => {
               if (element) editors.current.set(note.id, element)
               else editors.current.delete(note.id)
