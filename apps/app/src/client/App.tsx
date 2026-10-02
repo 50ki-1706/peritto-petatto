@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex'
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react'
 import { AuthGate } from './AuthGate'
 import { styles, paperStyles, foldStyles } from './board.styles'
-import { initialNotes, palette, useNoteStore, type Color, type Note } from './stores/noteStore'
+import { palette, useNoteStore, type Color, type Note } from './stores/noteStore'
 import { useNoteFeedback } from './useNoteFeedback'
 import { useCenteredEditor } from './useCenteredEditor'
 import {
@@ -52,7 +52,7 @@ function NoteBoard() {
   const lastTap = useRef<{ id: string; time: number; x: number; y: number } | null>(null)
   const suppressClick = useRef(false)
   const sheetGesture = useRef<{ y: number; moved: boolean } | null>(null)
-  const topZ = useRef(initialNotes.length)
+  const topZ = useRef(0)
 
   const mobileLayout = layoutMobileNotes(notes, viewportWidth)
   const mobilePositions = new Map(mobileLayout.map((note) => [note.id, note]))
@@ -63,6 +63,10 @@ function NoteBoard() {
     ) + 164
 
   useCenteredEditor(focusId, isMobile, editors)
+
+  useEffect(() => {
+    topZ.current = Math.max(topZ.current, 0, ...notes.map((note) => note.z ?? 0))
+  }, [notes])
 
   useEffect(() => {
     if (focusId) editors.current.get(focusId)?.focus({ preventScroll: isMobile })
@@ -638,9 +642,62 @@ function NoteBoard() {
 }
 
 export function App() {
+  return <AuthGate>{(userId) => <SyncedNoteBoard userId={userId} />}</AuthGate>
+}
+
+function SyncedNoteBoard({ userId }: { userId: string }) {
+  const loadStatus = useNoteStore((state) => state.loadStatus)
+  const syncStatus = useNoteStore((state) => state.syncStatus)
+  const error = useNoteStore((state) => state.error)
+  const initialize = useNoteStore((state) => state.initialize)
+  const retryLoad = useNoteStore((state) => state.retryLoad)
+  const retrySync = useNoteStore((state) => state.retrySync)
+
+  useEffect(() => {
+    void initialize(userId)
+  }, [initialize, userId])
+
+  if (loadStatus === 'idle' || loadStatus === 'loading') {
+    return (
+      <main {...stylex.props(styles.syncPage)} aria-busy="true">
+        <p {...stylex.props(styles.syncMessage)}>付箋を読み込んでいます…</p>
+      </main>
+    )
+  }
+
+  if (loadStatus === 'error') {
+    return (
+      <main {...stylex.props(styles.syncPage)}>
+        <section {...stylex.props(styles.syncPanel)}>
+          <p role="alert">{error}</p>
+          <button
+            type="button"
+            {...stylex.props(styles.syncButton)}
+            onClick={() => void retryLoad()}
+          >
+            もう一度読み込む
+          </button>
+        </section>
+      </main>
+    )
+  }
+
   return (
-    <AuthGate>
+    <>
       <NoteBoard />
-    </AuthGate>
+      {syncStatus === 'saving' && (
+        <p role="status" {...stylex.props(styles.syncBadge)}>
+          保存中…
+        </p>
+      )}
+      {syncStatus === 'error' && (
+        <aside role="alert" {...stylex.props(styles.syncError)}>
+          <span>{error}</span>
+          <button type="button" {...stylex.props(styles.syncButton)} onClick={retrySync}>
+            再試行
+          </button>
+        </aside>
+      )}
+    </>
   )
 }

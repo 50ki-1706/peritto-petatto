@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "api",
+  "name": "peritto-petatto",
   "account_id": "9135d42f432d487a4755560f331db1ae",
   "compatibility_date": "2025-08-03",
   "compatibility_flags": ["nodejs_compat"],
