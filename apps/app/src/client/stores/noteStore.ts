@@ -23,13 +23,26 @@ type NoteStore = {
 const SYNC_DELAY_MS = 400
 let savedNotes: Note[] = []
 let syncTimer: ReturnType<typeof setTimeout> | undefined
-let syncInFlight: Promise<void> | undefined
+let syncInFlight: Promise<PersistResult> | undefined
 
-function copyNotes(notes: Note[]) {
-  return notes.map((note) => ({
+type PersistOperation =
+  | { type: 'save'; note: Note; run: () => Promise<void> }
+  | { type: 'delete'; id: string; run: () => Promise<void> }
+
+type PersistResult = {
+  savedNotes: Note[]
+  failed: boolean
+}
+
+function copyNote(note: Note): Note {
+  return {
     ...note,
     ...(note.mobilePlacement ? { mobilePlacement: { ...note.mobilePlacement } } : {}),
-  }))
+  }
+}
+
+function copyNotes(notes: Note[]) {
+  return notes.map(copyNote)
 }
 
 function sameNote(left: Note, right: Note) {
@@ -55,21 +68,39 @@ function sameNotes(left: Note[], right: Note[]) {
   })
 }
 
-async function persistDifference(previous: Note[], current: Note[]) {
+async function persistDifference(previous: Note[], current: Note[]): Promise<PersistResult> {
   const previousById = new Map(previous.map((note) => [note.id, note]))
   const currentById = new Map(current.map((note) => [note.id, note]))
-  const operations: Promise<void>[] = []
+  const operations: PersistOperation[] = []
 
   for (const note of current) {
     const saved = previousById.get(note.id)
-    if (!saved) operations.push(createNote(note))
-    else if (!sameNote(saved, note)) operations.push(updateNote(note))
+    if (!saved) operations.push({ type: 'save', note, run: () => createNote(note) })
+    else if (!sameNote(saved, note)) {
+      operations.push({ type: 'save', note, run: () => updateNote(note) })
+    }
   }
   for (const note of previous) {
-    if (!currentById.has(note.id)) operations.push(deleteNote(note.id))
+    if (!currentById.has(note.id)) {
+      operations.push({ type: 'delete', id: note.id, run: () => deleteNote(note.id) })
+    }
   }
 
-  await Promise.all(operations)
+  const results = await Promise.allSettled(operations.map((operation) => operation.run()))
+  const persistedById = new Map(copyNotes(previous).map((note) => [note.id, note]))
+
+  results.forEach((result, index) => {
+    if (result.status !== 'fulfilled') return
+    const operation = operations[index]
+    if (!operation) return
+    if (operation.type === 'save') persistedById.set(operation.note.id, copyNote(operation.note))
+    else persistedById.delete(operation.id)
+  })
+
+  return {
+    savedNotes: [...persistedById.values()],
+    failed: results.some((result) => result.status === 'rejected'),
+  }
 }
 
 function scheduleSync(delay = SYNC_DELAY_MS) {
@@ -92,9 +123,16 @@ async function synchronizeNotes() {
   syncInFlight = persistDifference(savedNotes, target)
 
   try {
-    await syncInFlight
+    const result = await syncInFlight
     if (useNoteStore.getState().userId !== syncingUserId) return
-    savedNotes = target
+    savedNotes = result.savedNotes
+    if (result.failed) {
+      useNoteStore.setState({
+        syncStatus: 'error',
+        error: '付箋を保存できませんでした。通信状態を確認して再試行してください。',
+      })
+      return
+    }
     succeeded = true
     useNoteStore.setState({ syncStatus: 'saved', error: '' })
   } catch {
