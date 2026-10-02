@@ -2,6 +2,7 @@
 import { Hono } from 'hono'
 import { createAuth } from './auth'
 import { checkLoginRateLimit } from './loginRateLimit'
+import { notesApi } from './notesApi'
 import { renderer } from './renderer'
 
 const app = new Hono<{ Bindings: CloudflareBindings }>()
@@ -18,6 +19,8 @@ app.use('/api/auth/sign-in/social', async (c, next) => {
 app.all('/api/auth/*', (c) => {
   return createAuth(c.env).handler(c.req.raw)
 })
+
+app.route('/api/notes', notesApi)
 
 app.use(renderer)
 
