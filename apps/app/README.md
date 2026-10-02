@@ -24,6 +24,11 @@ and replace all placeholders. `BETTER_AUTH_URL` must be
 
 The real `.dev.vars` file and production secrets must never be committed.
 
+Google sign-in initiation is limited through the `AUTH_RATE_LIMITER` Workers
+binding. Each connecting IP can start up to 20 sign-ins per minute. Session
+checks and OAuth callbacks are not counted, so completing a normal login flow
+does not consume additional attempts.
+
 ## Commands
 
 Bootstrap once with `pnpm install` (pnpm remains the workspace package manager).
