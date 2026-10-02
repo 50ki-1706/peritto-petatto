@@ -1,0 +1,51 @@
+export const defaultNoteTemplates = [
+  {
+    color: 'yellow',
+    text: 'ぺりっと、\nぺたっと。\n思いついたことを\n付箋に書こう！',
+    x: 60,
+    y: 78,
+    angle: -4,
+  },
+  {
+    color: 'pink',
+    text: '付箋を追加\n\n下の色を選ぶか\n上へ引き出そう',
+    x: 318,
+    y: 65,
+    angle: -5,
+  },
+  {
+    color: 'blue',
+    text: '文字を書く\n\n付箋をダブルタップ\nして入力しよう',
+    x: 576,
+    y: 76,
+    angle: -3,
+  },
+  {
+    color: 'green',
+    text: '好きな場所へ\n\n付箋のどこでも\nつかんで動かそう',
+    x: 834,
+    y: 65,
+    angle: -4,
+  },
+  {
+    color: 'purple',
+    text: 'いらなくなったら\n\n左右の端へ移動\n赤くなったら\n離して削除！',
+    x: 84,
+    y: 326,
+    angle: -5,
+  },
+  {
+    color: 'orange',
+    text: '削除をやめる\n\n離す前に中央へ\n戻せば大丈夫',
+    x: 342,
+    y: 313,
+    angle: -4,
+  },
+  {
+    color: 'pink',
+    text: '色で分けよう\n\n予定やアイデアを\n好きな色の付箋に',
+    x: 600,
+    y: 327,
+    angle: -5,
+  },
+] as const

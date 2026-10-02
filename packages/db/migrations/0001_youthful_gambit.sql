@@ -1,0 +1,1 @@
+ALTER TABLE `user` ADD `notes_initialized` integer DEFAULT false NOT NULL;

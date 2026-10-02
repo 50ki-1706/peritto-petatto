@@ -5,7 +5,7 @@ import { authStyles } from './auth.styles'
 import { authClient } from './authClient'
 
 type AuthGateProps = {
-  children: ReactNode
+  children: (userId: string) => ReactNode
 }
 
 export function AuthGate({ children }: AuthGateProps) {
@@ -84,7 +84,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
   return (
     <>
-      {children}
+      {children(session.user.id)}
       <aside {...stylex.props(authStyles.account)} aria-label="アカウント">
         <span {...stylex.props(authStyles.userName)} title={session.user.email}>
           {session.user.name || session.user.email}

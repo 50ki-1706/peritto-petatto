@@ -1,8 +1,9 @@
-import { notes as notesTable } from 'db'
+import { notes as notesTable, user as userTable } from 'db'
 import { and, asc, drizzle, eq } from 'db/client'
 import { Hono, type Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { createAuth } from './auth'
+import { createDefaultNotes } from './defaultNotes'
 import { parseCreateNote, parseUpdateNote } from './noteInput'
 
 type NotesEnv = { Bindings: CloudflareBindings }
@@ -26,11 +27,29 @@ async function readJson(c: Context<NotesEnv>) {
   }
 }
 
+async function initializeNotes(database: ReturnType<typeof drizzle>, userId: string) {
+  const [user] = await database
+    .select({ notesInitialized: userTable.notesInitialized })
+    .from(userTable)
+    .where(eq(userTable.id, userId))
+    .limit(1)
+
+  if (!user || user.notesInitialized) return
+
+  const defaults = await createDefaultNotes(userId)
+  await database.insert(notesTable).values(defaults).onConflictDoNothing({ target: notesTable.id })
+  await database
+    .update(userTable)
+    .set({ notesInitialized: true, updatedAt: new Date() })
+    .where(eq(userTable.id, userId))
+}
+
 notesApi.get('/', async (c) => {
   const userId = await authenticatedUserId(c)
   if (!userId) return c.json({ error: 'ログインが必要です' }, 401)
 
   const database = drizzle(c.env.peritto_petatto)
+  await initializeNotes(database, userId)
   const notes = await database
     .select()
     .from(notesTable)
