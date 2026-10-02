@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'peritto-petatto-'
-const STATIC_CACHE = `${CACHE_PREFIX}static-v1`
+const STATIC_CACHE = `${CACHE_PREFIX}static-v2`
 const STATIC_DESTINATIONS = new Set(['font', 'image', 'script', 'style'])
 
 self.addEventListener('install', (event) => {
@@ -17,6 +17,8 @@ self.addEventListener('activate', (event) => {
             .map((key) => caches.delete(key)),
         ),
       )
+      // Cache storage is optional; failure must not block taking control.
+      .catch(() => undefined)
       .then(() => self.clients.claim()),
   )
 })
@@ -35,14 +37,31 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  event.respondWith(
-    caches.open(STATIC_CACHE).then(async (cache) => {
+  event.respondWith(loadStaticResource(request))
+})
+
+async function loadStaticResource(request) {
+  try {
+    // Revalidate fixed URLs (such as brand.png) as well as hashed assets.
+    // Cached resources are a fallback, not an indefinitely stale first choice.
+    const response = await fetch(request, { cache: 'no-cache' })
+    if (response.ok) {
+      try {
+        const cache = await caches.open(STATIC_CACHE)
+        await cache.put(request, response.clone())
+      } catch {
+        // Storage can be unavailable or full. Still return the fetched response.
+      }
+    }
+    return response
+  } catch (networkError) {
+    try {
+      const cache = await caches.open(STATIC_CACHE)
       const cached = await cache.match(request)
       if (cached) return cached
-
-      const response = await fetch(request)
-      if (response.ok) await cache.put(request, response.clone())
-      return response
-    }),
-  )
-})
+    } catch {
+      // Preserve the original network failure if the cache is also unavailable.
+    }
+    throw networkError
+  }
+}
