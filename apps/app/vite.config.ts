@@ -33,6 +33,7 @@ function tauriIndexHtml(): Plugin {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>peritto-petatto</title>
+    <link rel="icon" type="image/png" href="/brand.png" />
     ${css.map((file) => `<link rel="stylesheet" href="/${file}" />`).join('\n    ')}
   </head>
   <body>

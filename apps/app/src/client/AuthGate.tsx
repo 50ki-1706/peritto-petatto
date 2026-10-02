@@ -54,12 +54,22 @@ export function AuthGate({ children }: AuthGateProps) {
     return (
       <main {...stylex.props(authStyles.page)}>
         <section {...stylex.props(authStyles.card)} aria-labelledby="login-title">
+          <img
+            {...stylex.props(authStyles.logo)}
+            src="/brand.png"
+            alt=""
+            width={1536}
+            height={1024}
+            fetchPriority="high"
+          />
           <p {...stylex.props(authStyles.eyebrow)}>peritto petatto</p>
           <h1 id="login-title" {...stylex.props(authStyles.title)}>
-            付箋を、どこでも同じように。
+            付箋を、
+            <br />
+            どこでも同じように。
           </h1>
           <p {...stylex.props(authStyles.description)}>
-            Googleでログインすると、PCとスマートフォンから同じ付箋を使えます。
+            PCとスマートフォンから同じ付箋を使えます。
           </p>
           <button
             type="button"

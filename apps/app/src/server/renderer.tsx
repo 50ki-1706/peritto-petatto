@@ -7,6 +7,7 @@ export const renderer = jsxRenderer(({ children }) => {
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <link rel="icon" type="image/png" href="/brand.png" />
         <ViteClient />
         <Link href="/src/server/style.css" rel="stylesheet" />
         {/*
