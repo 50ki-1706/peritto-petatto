@@ -85,7 +85,14 @@ jobs:
       # No OAuth, Cloudflare, or signing secrets are passed to these PR builds.
       # Only dist/client is embedded; the Worker output is not uploaded.
       - name: Build desktop installer
+        if: runner.os != 'Windows'
         run: vp -C apps/app run tauri build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} -- --locked
+
+      # PowerShell can consume the standalone -- when invoking the vp.ps1 shim.
+      # Explicitly use the native-command shim to preserve Cargo's argument separator.
+      - name: Build Windows desktop installer
+        if: runner.os == 'Windows'
+        run: vp.cmd -C apps/app run tauri build --ci --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} -- --locked
 
       - name: Verify dependency lockfiles were not changed
         run: git diff --exit-code -- pnpm-lock.yaml apps/app/src-tauri/Cargo.lock
