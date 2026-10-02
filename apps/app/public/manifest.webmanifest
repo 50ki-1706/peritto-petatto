@@ -1,0 +1,25 @@
+{
+  "name": "peritto-petatto",
+  "short_name": "ぺりっとぺたっと",
+  "description": "付箋のように、すばやく書いて並べられるタスク管理アプリ",
+  "lang": "ja",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff8e7",
+  "theme_color": "#ffafd2",
+  "icons": [
+    {
+      "src": "/pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
