@@ -98,9 +98,10 @@ production.
   only for commands `cf` does not support yet — single-secret management
   (`wrangler secret put <NAME> --name peritto-petatto`) and log tailing
   (`wrangler tail peritto-petatto`); both work config-less because the Worker
-  name is passed explicitly (`wrangler.jsonc` was removed). See
-  `.agents/skills/wrangler`; the MCP servers are for lookup, binding management,
-  builds and observability.
+  name is passed explicitly (`wrangler.jsonc` was removed). The installed
+  `wrangler` skill routes `cf`/`cloudflare.config.ts` projects to the cf docs
+  (see the [cf agent guide](https://developers.cloudflare.com/cf/agents/)); the
+  MCP servers are for lookup, binding management, builds and observability.
 
 ## Dependency updates
 
