@@ -18,4 +18,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # vp check type-checks against the generated Env types (git-ignored).
+      - run: pnpm exec vp run --filter app cf-typegen
       - run: pnpm exec vp check
