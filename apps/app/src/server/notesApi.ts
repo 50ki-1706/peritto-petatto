@@ -6,7 +6,7 @@ import { createAuth } from './auth'
 import { createDefaultNotes } from './defaultNotes'
 import { parseCreateNote, parseUpdateNote } from './noteInput'
 
-type NotesEnv = { Bindings: CloudflareBindings }
+type NotesEnv = { Bindings: Env }
 
 const notesApi = new Hono<NotesEnv>()
 const jsonBodyLimit = bodyLimit({

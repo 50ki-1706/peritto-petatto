@@ -9,7 +9,7 @@ import { defineConfig } from 'vite-plus'
 const ignorePatterns = [
   '**/node_modules/**',
   '**/dist/**',
-  'apps/app/.wrangler/**',
+  'apps/app/.cloudflare/**',
   '.agents/skills/**',
   '.claude/skills/**',
   'packages/db/migrations/**',

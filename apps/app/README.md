@@ -5,10 +5,10 @@ Tauri desktop shell plus a Cloudflare Workers (Hono) server and a React client, 
 ## Structure
 
 - `src/client/` – React client, mounts into `<div id="root">`
-- `src/server/` – Hono app served by Cloudflare Workers (`wrangler.jsonc` main entry)
+- `src/server/` – Hono app served by Cloudflare Workers (`cloudflare.config.ts` entrypoint)
 - `src-tauri/` – Tauri desktop shell
-- `vite.config.ts` – Cloudflare Vite plugin + `vite-ssr-components` + React plugin
-- `wrangler.jsonc` – Worker config (D1 binding `peritto_petatto`)
+- `vite.config.ts` – Cloudflare Vite plugin v2 beta + `vite-ssr-components` + React plugin; mirrors the client build to `dist/client` for Tauri
+- `cloudflare.config.ts` – single Cloudflare configuration (worker name, D1 binding, rate limit, required secrets), read by both the cf CLI and the Vite plugin
 
 The server renders the HTML shell (including the client `<Script>`); React is mounted client-side.
 
@@ -40,10 +40,10 @@ Run from the repo root:
 
 ```txt
 vp install                    # install all workspace dependencies
-vp -C apps/app dev            # Vite+ dev server on http://localhost:5173
-vp -C apps/app build          # production build: dist/client (+ generated index.html for Tauri) and dist/api
+vp -C apps/app dev            # Vite dev server on http://localhost:5173 (same pipeline as `cf dev`)
+vp -C apps/app build          # production build; also mirrors the client build to apps/app/dist/client for Tauri
 vp run --filter app preview   # build, then serve the production output
-vp run -r typecheck           # tsc --noEmit in every package
+vp run -r typecheck           # cf workers types + tsc in app, tsc in db
 vp check                      # format + lint + type-check the workspace
 ```
 
@@ -51,14 +51,14 @@ Or from this directory:
 
 ```txt
 vp dev            # app dev server (built-in command)
-vp run dev        # same, through the package script
+vp run dev        # cf dev (same pipeline, through the package script)
 vp build          # app production build (built-in command)
 vp run build      # same, through the package script
 vp preview        # serve the existing production build (does not rebuild)
 vp run preview    # build first, then serve (`vp run build && vp preview`)
-vp run deploy     # build + wrangler deploy
-vp run cf-typegen # generate CloudflareBindings types from wrangler.jsonc
-vp run typecheck  # tsc --noEmit for this package
+vp run deploy     # cf deploy (builds Build Output and uploads the Worker)
+vp run cf-typegen # generate Env types (cf workers types) to .cloudflare/types
+vp run typecheck  # cf workers types && tsc --noEmit for this package
 ```
 
 `vp preview` is the built-in preview command and only serves an existing build;
@@ -69,8 +69,8 @@ Database tasks live in [`packages/db`](../../packages/db):
 
 ```txt
 vp run --filter db db:generate        # drizzle-kit generate
-vp run --filter db db:migrate:local   # wrangler d1 migrations apply (--local)
-vp run --filter db db:migrate:remote  # wrangler d1 migrations apply (--remote)
+vp run --filter db db:migrate:local   # cf d1 migrations apply <id> --local
+vp run --filter db db:migrate:remote  # cf d1 migrations apply <id> (remote)
 ```
 
 Tauri:
@@ -89,14 +89,45 @@ vp run --filter app tauri build   # from the repo root
 
 D1 schema and migration scripts live in [`packages/db`](../../packages/db).
 
-Local development (`vp dev`) uses a local D1 database automatically; local state
-lives in `apps/app/.wrangler/state` (relative to the repo root). The local
-database is isolated local data, not a copy of production — delete that state
-directory to reset it.
+Local development (`cf dev`, or `vp dev` which starts Vite directly) uses a
+local D1 database automatically; local state lives in
+`apps/app/.cloudflare/state/v3` (relative to the repo root), and
+`db:migrate:local` writes the same state through
+`--persist-to ../../apps/app/.cloudflare/state`. The local database is
+isolated local data, not a copy of production — delete that state directory to
+reset it. (The old `.wrangler/state` directory from Vite plugin 1.x is no
+longer read.)
 
 To change the schema, edit `packages/db/src/schema.ts`, then run
 `vp run --filter db db:generate` to create the migration in
-`packages/db/migrations/`, followed by `vp run --filter db db:migrate:local`.
-Before deploying, apply it to the shared remote database with
-`vp run --filter db db:migrate:remote`; this affects the production D1 database
-`peritto-petatto`.
+`packages/db/migrations/`, followed by `vp run --filter db db:migrate:local`
+(cf d1 migrations apply with the database ID from `cloudflare.config.ts`).
+
+Applying `vp run --filter db db:migrate:remote` writes the production D1
+database `peritto-petatto` and requires explicit approval naming that database;
+code/deploy approval is not enough. It needs Cloudflare credentials and an
+account selection (`CLOUDFLARE_ACCOUNT_ID` or the interactive prompt) because
+`packages/db` is not under `apps/app/cloudflare.config.ts`.
+
+## Cloudflare configuration
+
+`cloudflare.config.ts` is the single source of truth: worker name, entrypoint,
+compatibility date/flags, D1 binding, rate limit and required secrets. The
+`@cloudflare/vite-plugin` v2 beta reads it directly in dev and build (there is
+no `configPath` option and no `wrangler.jsonc`), the cf CLI reads it for
+`cf dev`/`cf build`/`cf deploy`/`cf workers types`/`cf d1`, and deploys go
+through `vp run deploy` (`cf deploy`).
+
+`vp build` and `cf build` write the deployable Build Output to
+`.cloudflare/output/v0/`; `vite.config.ts` additionally mirrors the client build
+to `dist/client`, which is what Tauri's unchanged `frontendDist` points at.
+Generate binding types with `vp run cf-typegen` (`cf workers types`); the
+git-ignored output in `.cloudflare/types/` is picked up by `tsconfig.json`.
+Wrangler is only used for what cf does not support yet — `wrangler secret
+put <NAME> --name peritto-petatto` and `wrangler tail peritto-petatto` — and
+runs without a config file.
+
+Workers Builds triggers (dashboard/API state, not repo state) are unified:
+root `/apps/app`, build `pnpm run build`, deploy `npx cf deploy --prebuilt
+--mode production` (production) / `npx cf previews deploy` (previews). Keep
+production and preview triggers in sync.
