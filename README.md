@@ -21,7 +21,7 @@
 3. Vite+ をグローバル導入: `curl -fsSL https://vite.plus | bash`。グローバル未導入の場合は以降の `vp ...` を `pnpm exec vp ...` に置き換えて実行する。
 4. `apps/app/.dev.vars.example`を`apps/app/.dev.vars`へコピーし、認証用の値を設定する。
 5. 開発サーバーを起動: `vp -C apps/app dev`（http://localhost:5173）。
-6. チェック: `vp check`（format + lint + type-check）、`vp run -r typecheck`。
+6. チェック: 先に `vp run --filter app cf-typegen` で Env 型（`.cloudflare/types`、git 管理外）を生成してから `vp check`（format + lint + type-check）、`vp run -r typecheck`。
 7. DB にテーブルを追加した場合のみ: `packages/db/src/schema.ts` を編集 → `vp run --filter db db:generate` → `vp run --filter db db:migrate:local`（ローカル D1 に適用。`drizzle-kit push` は使わない）。
 
 詳細（デプロイ・マイグレーション remote 適用・Tauri ビルドなど）は [apps/app/README.md](apps/app/README.md) を参照。
