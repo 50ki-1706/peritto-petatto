@@ -10,8 +10,8 @@
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "wrangler d1 migrations apply peritto-petatto --local --config ../../apps/app/wrangler.jsonc",
-    "db:migrate:remote": "wrangler d1 migrations apply peritto-petatto --remote --config ../../apps/app/wrangler.jsonc",
+    "db:migrate:local": "cf d1 migrations apply 9a925e04-8b23-4012-bd99-c73190548545 --local --dir ./migrations --persist-to ../../apps/app/.cloudflare/state",
+    "db:migrate:remote": "cf d1 migrations apply 9a925e04-8b23-4012-bd99-c73190548545 --dir ./migrations",
     "typecheck": "tsc --noEmit"
   },
   "license": "ISC",
