@@ -126,3 +126,8 @@ git-ignored output in `.cloudflare/types/` is picked up by `tsconfig.json`.
 Wrangler is only used for what cf does not support yet — `wrangler secret
 put <NAME> --name peritto-petatto` and `wrangler tail peritto-petatto` — and
 runs without a config file.
+
+Workers Builds triggers (dashboard/API state, not repo state) are unified:
+root `/apps/app`, build `pnpm run build`, deploy `npx cf deploy --prebuilt
+--mode production` (production) / `npx cf previews deploy` (previews). Keep
+production and preview triggers in sync.
