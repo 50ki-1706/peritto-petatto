@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
+    "dev": "cf dev",
     "build": "vp build",
     "preview": "vp run build && vp preview",
-    "deploy": "vp run build && wrangler deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
-    "typecheck": "tsc --noEmit",
+    "deploy": "cf deploy",
+    "cf-typegen": "cf workers types",
+    "typecheck": "cf workers types && tsc --noEmit",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -25,7 +25,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.44.0",
+    "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
     "@stylexjs/unplugin": "0.19.1",
     "@types/node": "26.6.3",
     "@types/react": "^19.3.0",

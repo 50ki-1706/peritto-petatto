@@ -1,6 +1,8 @@
 import { cloudflare } from '@cloudflare/vite-plugin'
 import stylex from '@stylexjs/unplugin'
 import react from '@vitejs/plugin-react'
+import { cp, rm } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import ssrPlugin from 'vite-ssr-components/plugin'
 
@@ -46,6 +48,28 @@ function tauriIndexHtml(): Plugin {
   }
 }
 
+/**
+ * The Vite plugin v2 beta always writes the client bundle to the Build Output
+ * layout (`.cloudflare/output/v0/workers/<name>/assets`). Tauri's
+ * `frontendDist` stays `../dist/client`, so mirror the built client directory
+ * there after the client build. `tauri.conf.json` stays untouched.
+ */
+function tauriClientDist(): Plugin {
+  return {
+    name: 'tauri-client-dist',
+    apply: 'build',
+    enforce: 'post',
+    async writeBundle() {
+      if (this.environment?.name !== 'client') return
+
+      const outDir = this.environment.config.build.outDir
+      const target = resolve(this.environment.config.root, 'dist/client')
+      await rm(target, { recursive: true, force: true })
+      await cp(outDir, target, { recursive: true })
+    },
+  }
+}
+
 export default defineConfig({
   plugins: [
     cloudflare(),
@@ -67,6 +91,7 @@ export default defineConfig({
       jsxImportSource: 'react',
     }),
     tauriIndexHtml(),
+    tauriClientDist(),
   ],
   server: {
     port: 5173,
