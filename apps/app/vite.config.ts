@@ -34,7 +34,12 @@ function tauriIndexHtml(): Plugin {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffafd2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ぺりっとぺたっと" />
     <title>peritto-petatto</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="/brand.png" />
     ${css.map((file) => `<link rel="stylesheet" href="/${file}" />`).join('\n    ')}
   </head>
   <body>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ぺりっとぺたっと">
+  <rect width="512" height="512" fill="#fff8e7" />
+  <g transform="rotate(-8 220 274)">
+    <rect x="112" y="174" width="244" height="244" rx="32" fill="#fff36d" />
+    <path d="M306 174h50v50z" fill="#fffbd1" />
+  </g>
+  <g transform="rotate(7 292 238)">
+    <rect x="168" y="94" width="244" height="244" rx="32" fill="#ffafd2" />
+    <path d="M362 94h50v50z" fill="#fff4df" />
+  </g>
+</svg>
