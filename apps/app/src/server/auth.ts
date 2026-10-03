@@ -4,7 +4,7 @@ import * as schema from 'db'
 import { drizzle } from 'drizzle-orm/d1'
 
 type AuthBindings = Pick<
-  Env,
+  CloudflareBindings,
   | 'BETTER_AUTH_SECRET'
   | 'BETTER_AUTH_URL'
   | 'GOOGLE_CLIENT_ID'

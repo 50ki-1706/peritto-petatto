@@ -8,7 +8,6 @@ target/
 
 # cloudflare
 .wrangler/
-.cloudflare/
 
 # env
 .env

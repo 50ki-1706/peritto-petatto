@@ -31,9 +31,9 @@ which the package manager provides, so scripts work with either setup.
 `vp <command>` is the built-in command; `vp run <command>` runs the
 `package.json` script with that name (for example `vp build` vs `vp run build`).
 
-`wrangler` and `cf` are dependencies of `apps/app` and `packages/db`, not of the
-workspace root, so their commands go through a package directory
-(`vp -C apps/app exec cf ...`, `vp -C packages/db exec cf ...`).
+`wrangler` is a dependency of `apps/app` and `packages/db`, not of the workspace
+root, so wrangler commands go through a package directory
+(`vp -C apps/app exec wrangler ...`).
 
 ### Rules
 
@@ -59,25 +59,12 @@ workspace root, so their commands go through a package directory
 Schema lives in `packages/db/src/schema.ts`. Migrations are generated, never
 pushed (`drizzle-kit generate` only, no `drizzle-kit push`): edit the schema,
 run `vp run --filter db db:generate`, then `vp run --filter db db:migrate:local`.
-
-The migration scripts use the cf CLI (`cf d1 migrations apply <DATABASE_ID>` with
-`--dir ./migrations`):
-
-- `db:migrate:local` applies to the local D1 state in
-  `apps/app/.cloudflare/state/v3`, shared with the dev server (Vite plugin v2
-  beta) through `--persist-to ../../apps/app/.cloudflare/state`.
-- `db:migrate:remote` (no `--local`) writes the shared production D1 database
-  `peritto-petatto` (`9a925e04-8b23-4012-bd99-c73190548545`). Never run it without
-  explicit approval that names that production database: approval to change or
-  deploy code does not imply approval to write the database. It needs credentials
-  and an account (`CLOUDFLARE_ACCOUNT_ID=9135d42f432d487a4755560f331db1ae` or an
-  interactive account choice), because `packages/db` is not under
-  `apps/app/cloudflare.config.ts`.
+Before deploying, apply migrations to the shared remote database with
+`vp run --filter db db:migrate:remote` (affects production D1 `peritto-petatto`).
 
 Local development binds to the local D1 database (the D1 binding in
-`apps/app/cloudflare.config.ts` is simulated locally); local state lives in
-`apps/app/.cloudflare/state` and is isolated local data, not a copy of
-production.
+`apps/app/wrangler.jsonc` has no `remote: true`); local state lives in
+`apps/app/.wrangler/state` and is isolated local data, not a copy of production.
 
 ## Cloudflare MCP servers
 
@@ -91,16 +78,7 @@ production.
 
 - One-time setup: run `opencode mcp auth <server>` for the four OAuth servers.
 - Mutation-capable tools (`cloudflare_execute`, bindings create/delete/update/edit, D1 query) should be approval-gated (`ask`) via personal agent config (see `.opencode/agents/`, machine-local git-ignored).
-- Deploys run `vp run --filter app deploy` (`cf deploy`: builds with the
-  `@cloudflare/vite-plugin` v2 beta from `cloudflare.config.ts`, then uploads).
-  The project-local `cf` CLI owns the whole project lifecycle (`cf dev`,
-  `cf build`, `cf deploy`, `cf workers types`, `cf d1`). Wrangler is retained
-  only for commands `cf` does not support yet — single-secret management
-  (`wrangler secret put <NAME> --name peritto-petatto`) and log tailing
-  (`wrangler tail peritto-petatto`); both work config-less because the Worker
-  name is passed explicitly (`wrangler.jsonc` was removed). See
-  `.agents/skills/wrangler`; the MCP servers are for lookup, binding management,
-  builds and observability.
+- Deploys run `vp run --filter app deploy`, which internally uses the wrangler CLI (see .agents/skills/wrangler); the MCP servers are for lookup, binding management, builds and observability.
 
 ## Dependency updates
 

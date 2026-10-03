@@ -5,7 +5,7 @@ import { checkLoginRateLimit } from './loginRateLimit'
 import { notesApi } from './notesApi'
 import { renderer } from './renderer'
 
-const app = new Hono<{ Bindings: Env }>()
+const app = new Hono<{ Bindings: CloudflareBindings }>()
 
 app.use('/api/auth/sign-in/social', async (c, next) => {
   if (c.req.method !== 'POST') return next()

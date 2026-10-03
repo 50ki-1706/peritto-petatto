@@ -10,8 +10,8 @@
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "db:migrate:local": "cf d1 migrations apply 9a925e04-8b23-4012-bd99-c73190548545 --local --dir ./migrations --persist-to ../../apps/app/.cloudflare/state",
-    "db:migrate:remote": "cf d1 migrations apply 9a925e04-8b23-4012-bd99-c73190548545 --dir ./migrations",
+    "db:migrate:local": "wrangler d1 migrations apply peritto-petatto --local --config ../../apps/app/wrangler.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply peritto-petatto --remote --config ../../apps/app/wrangler.jsonc",
     "typecheck": "tsc --noEmit"
   },
   "license": "ISC",
@@ -27,7 +27,6 @@
     "drizzle-orm": "^0.45.3"
   },
   "devDependencies": {
-    "cf": "1.0.0-beta.10",
     "drizzle-kit": "^0.31.11",
     "typescript": "^7.0.2",
     "wrangler": "^4.110.0"
