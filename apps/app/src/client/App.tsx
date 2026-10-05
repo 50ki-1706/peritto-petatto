@@ -7,13 +7,6 @@ import { styles, paperStyles, foldStyles } from './board.styles'
 import { palette, useNoteStore, type Color, type Note } from './stores/noteStore'
 import { useNoteFeedback } from './useNoteFeedback'
 import { useCenteredEditor } from './useCenteredEditor'
-import {
-  layoutMobileNotes,
-  mobileBounds,
-  mobileNoteSize,
-  placeMobileNote,
-  type Position,
-} from './mobileLayout'
 
 type DeleteSide = 'left' | 'right'
 type Drag = {
@@ -23,12 +16,13 @@ type Drag = {
   startY: number
   moved: boolean
   pointerId: number
-  mobileOrigin?: Position
+  gesture?: 'pending' | 'horizontal' | 'vertical'
 }
 
 const NOTE_SIZE = 206
 const MOBILE_QUERY = '(max-width: 700px)'
 const MOBILE_DRAG_THRESHOLD = 12
+const MOBILE_DELETE_RATIO = 0.45
 const DESKTOP_DRAG_THRESHOLD = 5
 const MOBILE_DOUBLE_TAP_MS = 500
 const DESKTOP_DOUBLE_TAP_MS = 350
@@ -43,8 +37,7 @@ function NoteBoard() {
   const [announcement, setAnnouncement] = useState('')
   const [focusId, setFocusId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
-  const [viewportWidth, setViewportWidth] = useState(390)
-  const [mobileDragPosition, setMobileDragPosition] = useState<Position | null>(null)
+  const [swipe, setSwipe] = useState<{ id: string; x: number } | null>(null)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const boardRef = useRef<HTMLElement>(null)
   const dockRef = useRef<HTMLElement>(null)
@@ -54,14 +47,6 @@ function NoteBoard() {
   const suppressClick = useRef(false)
   const sheetGesture = useRef<{ y: number; moved: boolean } | null>(null)
   const topZ = useRef(0)
-
-  const mobileLayout = layoutMobileNotes(notes, viewportWidth)
-  const mobilePositions = new Map(mobileLayout.map((note) => [note.id, note]))
-  const mobileHeight =
-    Math.max(
-      0,
-      ...mobileLayout.map((note) => mobileBounds(note, mobileNoteSize(viewportWidth)).bottom),
-    ) + 164
 
   useCenteredEditor(focusId, isMobile, editors)
 
@@ -89,7 +74,6 @@ function NoteBoard() {
     const updateViewport = () => {
       cancelDrag()
       setIsMobile(media.matches)
-      setViewportWidth(window.innerWidth)
       if (!media.matches) {
         setIsSheetOpen(false)
         setNotes((current) => current.map(constrain))
@@ -127,17 +111,8 @@ function NoteBoard() {
 
   function addNote(note: Note) {
     const z = ++topZ.current
-    // The mobile page can be much taller than the desktop board. Store a desktop
-    // position based on the visible drop location, independent of page scrolling.
-    const desktopPosition =
-      isMobile && note.mobilePlacement
-        ? {
-            x: note.mobilePlacement.x,
-            y: Math.max(14, note.mobilePlacement.y - window.scrollY),
-          }
-        : {}
     setNotes((current) => {
-      const next = constrain({ ...note, ...desktopPosition, z })
+      const next = constrain({ ...note, z })
       return [...current, next]
     })
     setFocusId(note.id)
@@ -152,24 +127,8 @@ function NoteBoard() {
     return { id, color, text: '', x, y, angle: -3 }
   }
 
-  function mobilePlacement(clientX: number, clientY: number) {
-    const board = boardRef.current!
-    const rect = board.getBoundingClientRect()
-    const size = mobileNoteSize(window.innerWidth)
-    return {
-      x: Math.max(12, Math.min(board.clientWidth - size - 12, clientX - rect.left - size / 2)),
-      y: Math.max(18, clientY - rect.top - 44),
-    }
-  }
-
-  function positionMobileNote(current: Note[], id: string, desired: Position): Note[] {
-    const note = current.find((item) => item.id === id)!
-    const placed = placeMobileNote(note, desired, window.innerWidth)
-    return current.map((item) => (item.id === id ? { ...item, mobilePlacement: placed } : item))
-  }
-
   function startNew(event: PointerEvent<HTMLButtonElement>, color: Color) {
-    if (event.button !== 0 || drag.current) return
+    if (isMobile || event.button !== 0 || drag.current) return
     const rect = boardRef.current!.getBoundingClientRect()
     suppressClick.current = false
     drag.current = {
@@ -190,9 +149,9 @@ function NoteBoard() {
   function startMove(event: PointerEvent<HTMLElement>, note: Note) {
     if (event.button !== 0 || !event.isPrimary || drag.current) return
     if (focusId === note.id && event.target === editors.current.get(note.id)) return
-    event.preventDefault()
+    if (!isMobile) event.preventDefault()
     setFocusId(null)
-    event.currentTarget.focus({ preventScroll: true })
+    if (!isMobile) event.currentTarget.focus({ preventScroll: true })
     setAnnouncement('')
     drag.current = {
       mode: 'move',
@@ -201,10 +160,10 @@ function NoteBoard() {
       startY: event.clientY,
       moved: false,
       pointerId: event.pointerId,
-      mobileOrigin: isMobile ? mobilePositions.get(note.id) : undefined,
+      gesture: isMobile ? 'pending' : undefined,
     }
-    bringToFront(note.id)
-    event.currentTarget.setPointerCapture(event.pointerId)
+    if (!isMobile) bringToFront(note.id)
+    if (!isMobile) event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   function deletionTarget(active: Drag, clientX: number, clientY: number): DeleteSide | null {
@@ -233,29 +192,32 @@ function NoteBoard() {
     if (!active || active.pointerId !== event.pointerId) return
     const dx = event.clientX - active.startX
     const dy = event.clientY - active.startY
-    const dragThreshold = isMobile ? MOBILE_DRAG_THRESHOLD : DESKTOP_DRAG_THRESHOLD
-    if (!active.moved && Math.hypot(dx, dy) < dragThreshold) return
+    if (isMobile && active.mode === 'move') {
+      if (active.gesture === 'pending') {
+        if (Math.hypot(dx, dy) < MOBILE_DRAG_THRESHOLD) return
+        active.gesture = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical'
+        if (active.gesture === 'horizontal') event.currentTarget.setPointerCapture(event.pointerId)
+      }
+      if (active.gesture === 'vertical') return
+      if (!active.moved) feedback.peel()
+      active.moved = true
+      lastTap.current = null
+      setDraggingId(active.note.id)
+      setSwipe({ id: active.note.id, x: dx })
+      const threshold = event.currentTarget.offsetWidth * MOBILE_DELETE_RATIO
+      setDeleteSide(Math.abs(dx) >= threshold ? (dx < 0 ? 'left' : 'right') : null)
+      return
+    }
+
+    if (!active.moved && Math.hypot(dx, dy) < DESKTOP_DRAG_THRESHOLD) return
     if (!active.moved) feedback.peel()
     active.moved = true
     lastTap.current = null
     setDeleteSide(deletionTarget(active, event.clientX, event.clientY))
 
-    if (isMobile && active.mode === 'move') {
-      setDraggingId(active.note.id)
-      setMobileDragPosition({
-        x: active.mobileOrigin!.x + dx,
-        y: Math.max(14, active.mobileOrigin!.y + dy),
-      })
-      return
-    }
-
     const next = { ...active.note, x: active.note.x + dx, y: active.note.y + dy }
     if (active.mode === 'new') {
-      setPreview(
-        isMobile
-          ? { ...next, mobilePlacement: mobilePlacement(event.clientX, event.clientY) }
-          : next,
-      )
+      setPreview(next)
     } else {
       setDraggingId(next.id)
       setNotes((current) =>
@@ -268,34 +230,27 @@ function NoteBoard() {
     const active = drag.current
     if (!active || active.pointerId !== event.pointerId) return
     if (active.mode === 'move' && active.moved) {
-      if (deletionTarget(active, event.clientX, event.clientY)) {
+      const swipeThreshold = event.currentTarget.offsetWidth * MOBILE_DELETE_RATIO
+      const completedSwipe =
+        isMobile &&
+        active.gesture === 'horizontal' &&
+        Math.abs(event.clientX - active.startX) >= swipeThreshold
+      if (completedSwipe || (!isMobile && deletionTarget(active, event.clientX, event.clientY))) {
         deleteNote(active.note.id)
       } else {
         feedback.stick()
-        // Keep ordinary drops on the board; only dragging can cross its edges.
         const dx = event.clientX - active.startX
         const dy = event.clientY - active.startY
-        setNotes((current) =>
-          isMobile
-            ? positionMobileNote(current, active.note.id, {
-                x: active.mobileOrigin!.x + dx,
-                y: active.mobileOrigin!.y + dy,
-              })
-            : current.map((note) =>
-                note.id === active.note.id
-                  ? constrain({ ...note, x: active.note.x + dx, y: active.note.y + dy })
-                  : note,
-              ),
-        )
+        if (!isMobile) {
+          setNotes((current) =>
+            current.map((note) =>
+              note.id === active.note.id
+                ? constrain({ ...note, x: active.note.x + dx, y: active.note.y + dy })
+                : note,
+            ),
+          )
+        }
       }
-    }
-    if (isMobile && active.mode === 'new' && !active.moved) {
-      suppressClick.current = true
-      addNote({
-        ...active.note,
-        mobilePlacement: mobilePlacement(window.innerWidth / 2, 80),
-      })
-      setIsSheetOpen(false)
     }
     if (active.mode === 'new' && active.moved) {
       suppressClick.current = true
@@ -317,20 +272,17 @@ function NoteBoard() {
           ...active.note,
           x: active.note.x + event.clientX - active.startX,
           y: active.note.y + event.clientY - active.startY,
-          ...(isMobile && {
-            mobilePlacement: mobilePlacement(event.clientX, event.clientY),
-          }),
         })
-        if (isMobile) setIsSheetOpen(false)
       }
     }
     drag.current = null
     setPreview(null)
     setDraggingId(null)
-    setMobileDragPosition(null)
+    setSwipe(null)
     setDeleteSide(null)
-    event.currentTarget.releasePointerCapture(event.pointerId)
-    if (active.mode === 'move' && !active.moved) {
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    if (active.mode === 'move' && !active.moved && active.gesture !== 'vertical') {
       const previous = lastTap.current
       if (
         previous?.id === active.note.id &&
@@ -354,7 +306,7 @@ function NoteBoard() {
   function cancelDrag() {
     const active = drag.current
     if (active) lastTap.current = null
-    if (active?.mode === 'move') {
+    if (active?.mode === 'move' && !isMobile) {
       setNotes((current) =>
         current.map((note) =>
           note.id === active.note.id
@@ -371,7 +323,7 @@ function NoteBoard() {
     drag.current = null
     setPreview(null)
     setDraggingId(null)
-    setMobileDragPosition(null)
+    setSwipe(null)
     setDeleteSide(null)
   }
 
@@ -394,6 +346,7 @@ function NoteBoard() {
           ?.focus()
       return
     }
+    if (isMobile) return
     const step = event.shiftKey ? 30 : 10
     const offsets: Record<string, [number, number]> = {
       ArrowLeft: [-step, 0],
@@ -404,32 +357,17 @@ function NoteBoard() {
     const offset = offsets[event.key]
     if (!offset) return
     event.preventDefault()
-    setNotes((current) => {
-      if (isMobile) {
-        const origin = mobilePositions.get(note.id)!
-        return positionMobileNote(current, note.id, {
-          x: origin.x + offset[0],
-          y: origin.y + offset[1],
-        })
-      }
-      return current.map((item) =>
+    setNotes((current) =>
+      current.map((item) =>
         item.id === note.id
           ? constrain({ ...item, x: item.x + offset[0], y: item.y + offset[1] })
           : item,
-      )
-    })
+      ),
+    )
   }
 
   return (
-    <main
-      ref={boardRef}
-      {...stylex.props(
-        styles.app,
-        styles.board,
-        isMobile && styles.mobileBoardHeight(mobileHeight),
-      )}
-      aria-label="付箋ボード"
-    >
+    <main ref={boardRef} {...stylex.props(styles.app, styles.board)} aria-label="付箋ボード">
       {notes.map((note, index) => (
         <article
           key={note.id}
@@ -441,36 +379,47 @@ function NoteBoard() {
             draggingId === note.id && styles.lifted,
             draggingId === note.id && styles.layer(topZ.current + 2),
             styles.mobileNote,
-            styles.mobilePlaced(
-              (draggingId === note.id && mobileDragPosition
-                ? mobileDragPosition
-                : mobilePositions.get(note.id)!
-              ).x,
-              (draggingId === note.id && mobileDragPosition
-                ? mobileDragPosition
-                : mobilePositions.get(note.id)!
-              ).y,
-            ),
+            styles.mobileSwipe(swipe?.id === note.id ? swipe.x : 0),
+            draggingId === note.id && styles.mobileSwiping,
             isMobile && focusId === note.id && styles.layer(topZ.current + 2),
           )}
           tabIndex={focusId === note.id ? -1 : 0}
           aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋`}
-          aria-keyshortcuts="Enter Space ArrowLeft ArrowRight ArrowUp ArrowDown Delete"
-          title="どこでもドラッグで移動。ダブルタップで編集。矢印キーで移動、Enterで編集、Deleteで削除"
+          aria-keyshortcuts={
+            isMobile
+              ? 'Enter Space Delete'
+              : 'Enter Space ArrowLeft ArrowRight ArrowUp ArrowDown Delete'
+          }
+          title={
+            isMobile
+              ? '左右に大きくスワイプして削除。ダブルタップで編集、Deleteキーで削除'
+              : 'どこでもドラッグで移動。ダブルタップで編集。矢印キーで移動、Enterで編集、Deleteで削除'
+          }
           onKeyDown={(event) => moveWithKeyboard(event, note)}
           onPointerDown={(event) => startMove(event, note)}
           onPointerMove={move}
           onPointerUp={finish}
           onPointerCancel={cancelDrag}
-          onLostPointerCapture={cancelDrag}
+          onLostPointerCapture={(event) => {
+            // A touch starts with implicit capture on the text below. Transferring
+            // it to the article for a swipe must not cancel that same swipe.
+            if (event.target === event.currentTarget) cancelDrag()
+          }}
         >
+          {isMobile && focusId !== note.id && (
+            <div {...stylex.props(styles.editor, styles.mobileReadView)}>{note.text}</div>
+          )}
           <NoteTextEditor
             data-note-editor
             ref={(element) => {
               if (element) editors.current.set(note.id, element)
               else editors.current.delete(note.id)
             }}
-            {...stylex.props(styles.editor, focusId !== note.id && styles.inactiveEditor)}
+            {...stylex.props(
+              styles.editor,
+              focusId !== note.id && styles.inactiveEditor,
+              isMobile && focusId !== note.id && styles.mobileHiddenEditor,
+            )}
             readOnly={focusId !== note.id}
             tabIndex={focusId === note.id ? 0 : -1}
             aria-label={`${palette.find((color) => color.id === note.color)!.label}の付箋のテキスト`}
@@ -535,9 +484,6 @@ function NoteBoard() {
             styles.position(preview.x, preview.y, -7, topZ.current + 2),
             styles.lifted,
             styles.preview,
-            preview.mobilePlacement && styles.mobileNote,
-            preview.mobilePlacement &&
-              styles.mobilePlaced(preview.mobilePlacement.x, preview.mobilePlacement.y),
           )}
         >
           <span {...stylex.props(styles.fold, foldStyles[preview.color])} />
@@ -625,9 +571,6 @@ function NoteBoard() {
                     (boardRef.current!.clientWidth - NOTE_SIZE) / 2 + offset,
                     170 + offset,
                   ),
-                  ...(isMobile && {
-                    mobilePlacement: mobilePlacement(window.innerWidth / 2, 80),
-                  }),
                 })
                 if (isMobile) setIsSheetOpen(false)
               }}

@@ -53,7 +53,7 @@ export const styles = stylex.create({
     '@media (max-width: 700px)': {
       height: 'auto',
       minHeight: '100dvh',
-      padding: '18px 8px 164px',
+      padding: '18px 12px 164px',
       overflowX: 'hidden',
       overflowY: 'visible',
     },
@@ -86,10 +86,8 @@ export const styles = stylex.create({
   },
   inactiveEditor: {
     // Let desktop wheel and touchpad gestures reach overflowing read-only text.
-    // Mobile keeps pointer events on the note so dragging and page scrolling win.
     pointerEvents: 'auto',
     userSelect: 'none',
-    '@media (max-width: 700px)': { pointerEvents: 'none' },
   },
   position: (x: number, y: number, angle: number, zIndex: number) => ({
     left: x,
@@ -102,27 +100,33 @@ export const styles = stylex.create({
       position: 'relative',
       left: 'auto',
       top: 'auto',
-      width: '60vw',
-      height: '60vw',
-      margin: '0 auto 22px',
+      width: '100%',
+      height: 168,
+      margin: '0 0 10px',
+      borderRadius: 10,
+      transform: 'none',
+      transformOrigin: 'center',
+      touchAction: 'pan-y',
+      transition: 'transform 180ms ease-out',
     },
   },
-  mobileBoardHeight: (height: number) => ({
-    '@media (max-width: 700px)': { height },
+  mobileSwipe: (x: number) => ({
+    '@media (max-width: 700px)': { transform: `translateX(${x}px)` },
   }),
-  mobilePlaced: (x: number, y: number) => ({
-    '@media (max-width: 700px)': {
-      position: 'absolute',
-      left: x,
-      top: y,
-      margin: 0,
-    },
-  }),
+  mobileSwiping: { '@media (max-width: 700px)': { transition: 'none' } },
+  mobileHiddenEditor: { '@media (max-width: 700px)': { display: 'none' } },
+  mobileReadView: {
+    whiteSpace: 'pre-wrap',
+    overflowWrap: 'anywhere',
+    userSelect: 'none',
+    touchAction: 'pan-y',
+  },
   lifted: { boxShadow: '4px 20px 28px -10px #66532e50', cursor: 'grabbing' },
   editor: {
     display: 'block',
     width: '100%',
     height: '100%',
+    overflowY: 'auto',
     padding: '24px 23px 20px',
     borderWidth: 0,
     resize: 'none',
@@ -135,9 +139,9 @@ export const styles = stylex.create({
     lineHeight: 1.65,
     letterSpacing: '0.025em',
     '@media (max-width: 700px)': {
-      padding: '18px 16px',
-      fontSize: 'clamp(16px, 4.2vw, 21px)',
-      lineHeight: 1.5,
+      padding: '16px 18px',
+      fontSize: 16,
+      lineHeight: 1.45,
     },
   },
   fold: {
